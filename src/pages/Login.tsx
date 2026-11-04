@@ -2,17 +2,87 @@ import { useLocation } from "react-router-dom";
 import { Link } from "@/router-compat";
 import { Page } from "@/components/Page";
 import { useAuth } from "@/auth/AuthContext";
-import { useState, type FormEvent } from "react";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { AlertCircle, ChevronDown, Eye, EyeOff, Loader2, Lock, Menu, User } from "lucide-react";
 import { toast } from "sonner";
 import { safeRedirectPath } from "@/lib/auth-redirect";
 import { btn } from "@/components/common";
 import { cn } from "@/lib/utils";
-import court from "@/assets/court.jpg";
 
 
 const inputBase =
   "h-12 w-full rounded-xl border bg-card pl-11 text-sm shadow-sm outline-none transition placeholder:text-muted-foreground/70 hover:border-primary/40 focus:border-primary focus:ring-4 focus:ring-ring/20 disabled:cursor-not-allowed disabled:opacity-60";
+
+const menuLinks = ["About Sportal", "University Profiles", "AI Features", "Contact Support", "Terms & Privacy"];
+
+function TopNav() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const soon = (label: string) => {
+    setOpen(false);
+    toast.info(`${label} isn't available yet.`);
+  };
+
+  return (
+    <header className="sticky top-0 z-30 border-b bg-white">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-8">
+        <div className="flex items-center gap-2.5">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-electric-gradient font-display text-lg font-bold text-primary-foreground shadow-glow">S</span>
+          <span className="font-display text-xl font-bold tracking-wide text-foreground">SPORTAL</span>
+        </div>
+
+        <div className="flex items-center gap-1 sm:gap-2">
+          <button type="button" onClick={() => soon("Help")} className="rounded-full px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted">
+            Help
+          </button>
+          <div ref={ref} className="relative">
+            <button
+              type="button"
+              onClick={() => setOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={open}
+              className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+            >
+              <Menu className="h-4 w-4" />
+              <span className="hidden sm:inline">Menu</span>
+              <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+            </button>
+            {open && (
+              <div role="menu" className="absolute right-0 top-full mt-2 w-60 rounded-2xl border bg-white p-2 shadow-lg">
+                {menuLinks.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    role="menuitem"
+                    onClick={() => soon(label)}
+                    className="block w-full rounded-xl px-3 py-2.5 text-left text-sm text-foreground transition hover:bg-muted"
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </header>
+  );
+}
 
 function LoginScreen() {
   const location = useLocation();
@@ -58,40 +128,13 @@ function LoginScreen() {
   }
 
   return (
-    <div className="grid min-h-[100dvh] bg-background lg:grid-cols-2">
-      {/* Brand panel */}
-      <aside className="relative overflow-hidden bg-hero text-navy-foreground">
-        <img src={court} alt="" className="absolute inset-0 h-full w-full object-cover opacity-25" />
-        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-electric/30 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-primary/30 blur-3xl" />
-        <div className="relative flex h-full flex-col justify-between gap-10 px-6 py-8 sm:px-10 lg:min-h-screen lg:px-14 lg:py-12">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-electric-gradient font-display text-xl font-bold text-primary-foreground shadow-glow">S</span>
-            <span className="font-display text-2xl font-bold tracking-wide">SPORTAL</span>
-          </div>
-          <div className="hidden lg:block">
-            <p className="font-display text-5xl font-bold uppercase leading-tight tracking-wide">
-              Train. Track.
-              <br />
-              <span className="text-electric">Improve.</span> Get Discovered.
-            </p>
-            <p className="mt-5 max-w-md text-navy-muted">
-              University athlete profiling and AI-assisted performance tracking, all in one place.
-            </p>
-          </div>
-          <p className="hidden text-xs text-navy-muted lg:block">© {new Date().getFullYear()} Sportal</p>
-          <p className="font-display text-lg font-semibold uppercase tracking-wider lg:hidden">
-            Train. Track. <span className="text-electric">Improve.</span> Get Discovered.
-          </p>
-        </div>
-      </aside>
-
-      {/* Form panel */}
-      <main className="flex items-center justify-center px-4 py-10 sm:px-8">
+    <div className="min-h-[100dvh]" style={{ background: "linear-gradient(180deg, oklch(0.985 0.004 250) 0%, oklch(0.95 0.016 250) 100%)" }}>
+      <TopNav />
+      <main className="grid min-h-[calc(100dvh-4rem)] place-items-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md">
           <div className="surface p-6 sm:p-8">
-            <h1 className="m-0! font-display text-3xl! font-bold! leading-tight sm:text-4xl!">Welcome back</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Sign in to continue to your dashboard.</p>
+            <h1 className="m-0! font-sans text-3xl! font-normal! tracking-tight">Welcome back</h1>
+            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">Sign in to continue to your dashboard.</p>
 
             {formError && (
               <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -186,14 +229,12 @@ function LoginScreen() {
                     <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
                   </>
                 ) : (
-                  <>
-                    Sign in <ArrowRight className="h-4 w-4" />
-                  </>
+                  "Sign in"
                 )}
               </button>
             </form>
           </div>
-          <p className="mt-5 text-center text-xs text-muted-foreground">
+          <p className="mt-5 text-center text-sm text-muted-foreground">
             Don't have an account?{" "}
             <Link to="/signup" direction="none" className="font-semibold text-primary hover:underline">Create one</Link>
           </p>
