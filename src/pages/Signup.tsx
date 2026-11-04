@@ -269,10 +269,10 @@ function SignupScreen() {
               </div>
 
               <div className="mt-6 flex flex-col gap-2 sm:flex-row">
-                <Link to="/login" direction="back" className={cn(btn.secondary, "flex-1")}>
+                <Link to="/login" direction="none" className={cn(btn.secondary, "flex-1")}>
                   <ArrowLeft className="h-4 w-4" /> Back
                 </Link>
-                <Link to="/login" search={{}} className={cn(btn.secondary, "flex-1")}>Login</Link>
+                <Link to="/login" search={{}} direction="none" className={cn(btn.secondary, "flex-1")}>Login</Link>
               </div>
             </div>
           </div>
@@ -373,7 +373,7 @@ function SignupScreen() {
                   <button type="button" onClick={back} disabled={loading || redirecting} className={cn(btn.secondary, "flex-1")}>
                     <ArrowLeft className="h-4 w-4" /> Back
                   </button>
-                  <Link to="/login" search={{}} className={cn(btn.secondary, "flex-1")}>Login</Link>
+                  <Link to="/login" search={{}} direction="none" className={cn(btn.secondary, "flex-1")}>Login</Link>
                 </div>
               </form>
             </div>
