@@ -90,7 +90,7 @@ function LoginScreen() {
       <main className="flex items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md">
           <div className="surface p-6 sm:p-8">
-            <h1 className="text-3xl font-bold sm:text-4xl">Welcome back</h1>
+            <h1 className="m-0! font-display text-3xl! font-bold! leading-tight sm:text-4xl!">Welcome back</h1>
             <p className="mt-1 text-sm text-muted-foreground">Sign in to continue to your dashboard.</p>
 
             {formError && (
