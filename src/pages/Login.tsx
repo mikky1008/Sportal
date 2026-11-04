@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AlertCircle, ChevronDown, Eye, EyeOff, Loader2, Lock, Menu, User } from "lucide-react";
 import { toast } from "sonner";
 import { safeRedirectPath } from "@/lib/auth-redirect";
+import { homePathFor } from "@/lib/roles";
 import { btn } from "@/components/common";
 import { cn } from "@/lib/utils";
 
@@ -112,7 +113,7 @@ function LoginScreen() {
       const res = await signIn({ identifier, password, remember });
       if (res.ok) {
         toast.success(`Welcome back, ${res.user.displayName}!`);
-        accept(res.user, safeRedirectPath(redirect));
+        accept(res.user, safeRedirectPath(redirect, homePathFor(res.user.roles)));
         return;
       }
       setFieldErrors(res.fieldErrors ?? {});
