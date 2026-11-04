@@ -3,7 +3,7 @@ import { Link } from "@/router-compat";
 import { Page } from "@/components/Page";
 import { useAuth } from "@/auth/AuthContext";
 import { useState, type FormEvent } from "react";
-import { AlertCircle, ArrowRight, Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, Loader2, Lock, User } from "lucide-react";
 import { toast } from "sonner";
 import { safeRedirectPath } from "@/lib/auth-redirect";
 import { btn } from "@/components/common";
@@ -90,8 +90,8 @@ function LoginScreen() {
       <main className="flex items-center justify-center px-4 py-10 sm:px-8">
         <div className="w-full max-w-md">
           <div className="surface p-6 sm:p-8">
-            <h1 className="text-3xl font-bold sm:text-4xl">Welcome back</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Sign in to continue to your dashboard.</p>
+            <h1 className="font-sans text-3xl font-medium tracking-tight sm:text-4xl">Welcome back</h1>
+            <p className="mt-2 text-sm font-normal leading-relaxed text-muted-foreground">Sign in to continue to your dashboard.</p>
 
             {formError && (
               <div role="alert" className="mt-5 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
@@ -186,9 +186,7 @@ function LoginScreen() {
                     <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
                   </>
                 ) : (
-                  <>
-                    Sign in <ArrowRight className="h-4 w-4" />
-                  </>
+                  "Sign in"
                 )}
               </button>
             </form>
