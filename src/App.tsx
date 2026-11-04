@@ -1,112 +1,188 @@
-import { IonApp, IonRouterOutlet, setupIonicReact } from "@ionic/react";
-import { IonReactRouter } from "@ionic/react-router";
-import { Redirect, Route, useLocation } from "react-router-dom";
-import type { ComponentType } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { useAuth } from "@/auth/AuthContext";
-import { SideMenu } from "@/layouts/Nav";
-import { Page } from "@/components/Page";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLocation } from "react-router-dom";
+import { IonContent, IonFooter, IonPage } from "@ionic/react";
+import { Bell, ChevronDown, LogOut, Menu, Search } from "lucide-react";
+import { notifications } from "@/data/mock";
+import { useAthleteProfile } from "@/lib/profileStore";
 import { Link } from "@/router-compat";
+import { BottomNav, nav } from "@/layouts/Nav";
+import { useAuth } from "@/auth/AuthContext";
+import { useIsDesktop } from "@/lib/useIsDesktop";
+import { cn } from "@/lib/utils";
+import juan from "@/assets/juan.jpg";
 
-import Login from "@/pages/Login";
-import Signup from "@/pages/Signup";
-import CompleteProfile from "@/pages/CompleteProfile";
-import Dashboard from "@/pages/Dashboard";
-import Profile from "@/pages/Profile";
-import Performance from "@/pages/Performance";
-import NewPractice from "@/pages/NewPractice";
-import Analysis from "@/pages/Analysis";
-import Rankings from "@/pages/Rankings";
-import Scholarships from "@/pages/Scholarships";
-import Recruiting from "@/pages/Recruiting";
-import AthleteShowcase from "@/pages/AthleteShowcase";
-import Notifications from "@/pages/Notifications";
-import Settings from "@/pages/Settings";
+interface PageProps {
+  title?: string;
+  children: ReactNode;
+  /** false for sign in / sign up / profile setup: full-screen, no top bar or tab bar */
+  shell?: boolean;
+  /** show a back arrow (to this path when there is no history) */
+  backTo?: string;
+  /** hide the bottom tab bar on this screen (e.g. while recording a practice) */
+  hideTabs?: boolean;
+}
 
-setupIonicReact({ mode: "ios", animated: false });
+/** The few links that stay visible in the top bar. Everything else lives in the Menu dropdown. */
+const TOP_TABS = ["/dashboard", "/performance", "/rankings"];
+const MENU_ITEMS = ["/profile", "/scholarships", "/recruiting", "/settings"];
 
-/** Screens that need a signed-in user. Anyone else is sent to /login and brought back afterwards. */
-const PROTECTED: { path: string; component: ComponentType }[] = [
-  { path: "/complete-profile", component: CompleteProfile },
-  { path: "/dashboard", component: Dashboard },
-  { path: "/profile", component: Profile },
-  { path: "/performance", component: Performance },
-  { path: "/performance/new", component: NewPractice },
-  { path: "/performance/analysis", component: Analysis },
-  { path: "/rankings", component: Rankings },
-  { path: "/scholarships", component: Scholarships },
-  { path: "/recruiting", component: Recruiting },
-  { path: "/recruiting/:athleteId", component: AthleteShowcase },
-  { path: "/notifications", component: Notifications },
-  { path: "/settings", component: Settings },
-];
-
-/** Screens that draw their own full-screen layout, without the side menu. */
-const NO_MENU = ["/login", "/signup", "/complete-profile"];
-
-function NotFound() {
+/** Every screen is one of these: an Ionic page with a top navigation bar, scrolling content and (on phones) a tab bar. */
+export function Page({ children, shell = true, backTo, hideTabs }: PageProps) {
+  const desktop = useIsDesktop();
+  if (!shell) {
+    return (
+      <IonPage>
+        <IonContent fullscreen>{children}</IonContent>
+      </IonPage>
+    );
+  }
   return (
-    <Page title="Not found">
-      <div className="flex min-h-[60vh] items-center justify-center px-4">
-        <div className="max-w-md text-center">
-          <h1 className="text-7xl font-bold text-foreground">404</h1>
-          <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-          <p className="mt-2 text-sm text-muted-foreground">This page doesn't exist or has been moved.</p>
-          <div className="mt-6">
-            <Link to="/dashboard" direction="root" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
-              Go to dashboard
-            </Link>
-          </div>
+    <IonPage>
+      <IonContent fullscreen>
+        <TopBar backTo={backTo} />
+        <div className="px-4 pb-10 pt-5 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-7xl">{children}</div>
+        </div>
+      </IonContent>
+      {!desktop && !hideTabs && (
+        <IonFooter>
+          <BottomNav />
+        </IonFooter>
+      )}
+    </IonPage>
+  );
+}
+
+/** Top navigation: logo, main tabs (tablet and up), notifications, you, and a Menu dropdown. */
+function TopBar({ backTo }: { backTo?: string }) {
+  const athlete = useAthleteProfile();
+  const { pathname } = useLocation();
+  const unread = notifications.filter((n) => !n.read).length;
+  const isActive = (to: string) => pathname === to || pathname.startsWith(to + "/");
+  const tabs = nav.filter((n) => TOP_TABS.includes(n.to));
+
+  return (
+    <header className="sticky top-0 z-30 border-b bg-white pt-[var(--ion-safe-area-top,0px)]">
+      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 md:h-16 md:gap-4 lg:px-8">
+        {backTo && (
+          <Link to={backTo} direction="back" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-card text-sm" aria-label="Back">
+            ←
+          </Link>
+        )}
+        <Link to="/dashboard" direction="root" className="flex shrink-0 items-center gap-2.5" aria-label="Sportal home">
+          <span className="grid h-9 w-9 place-items-center rounded-full bg-electric-gradient font-display text-lg font-bold text-primary-foreground shadow-glow">S</span>
+          <span className="font-display text-xl font-bold tracking-wide text-foreground">SPORTAL</span>
+        </Link>
+
+        <div className="relative hidden w-72 xl:block">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="search"
+            placeholder="Search skills, rankings, sessions…"
+            className="h-10 w-full rounded-full border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/15"
+          />
+        </div>
+
+        <div className="ml-auto flex items-center gap-1">
+          <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
+            {tabs.map(({ to, label, icon: Icon }) => (
+              <Link
+                key={to}
+                to={to}
+                direction="root"
+                className={cn(
+                  "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                  isActive(to) ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {label}
+              </Link>
+            ))}
+          </nav>
+
+          <span className="mx-2 hidden h-6 w-px bg-border md:block" aria-hidden="true" />
+
+          <Link to="/notifications" direction="root" aria-label={`Notifications, ${unread} unread`} className="relative grid h-10 w-10 place-items-center rounded-full border bg-card">
+            <Bell className="h-5 w-5" />
+            {unread > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />}
+          </Link>
+          <Link to="/profile" direction="root" className="flex items-center gap-2 rounded-full p-1 pr-2 lg:pr-3" aria-label="My profile">
+            <img src={juan} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/30" />
+            <span className="hidden text-sm font-semibold lg:inline">{athlete.firstName}</span>
+          </Link>
+
+          <MenuDropdown />
         </div>
       </div>
-    </Page>
+    </header>
   );
 }
 
-function Splash() {
-  return (
-    <div className="grid min-h-[100dvh] place-items-center bg-hero">
-      <span className="grid h-16 w-16 place-items-center rounded-2xl bg-electric-gradient font-display text-3xl font-bold text-primary-foreground shadow-glow">S</span>
-    </div>
-  );
-}
+/** "Menu" button that drops down the less important pages and Sign out. */
+function MenuDropdown() {
+  const { signOut } = useAuth();
+  const { pathname } = useLocation();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const isActive = (to: string) => pathname === to || pathname.startsWith(to + "/");
+  const items = nav.filter((n) => MENU_ITEMS.includes(n.to));
 
-function Shell() {
-  const { user, epoch, landing } = useAuth();
-  const { pathname, search } = useLocation();
-  const noMenu = !user || NO_MENU.includes(pathname.replace(/\/+$/, "") || "/");
-  const loginUrl = `/login?redirect=${encodeURIComponent(pathname + search)}`;
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: PointerEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("pointerdown", onPointer);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("pointerdown", onPointer);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   return (
-    <>
-      {/* phones only: the slide-in menu. Tablets and desktop use the top navigation bar inside <Page> */}
-      {user && !noMenu && <SideMenu />}
-      {/* `key` throws the cached screens away on every sign in / sign out, so one account never sees another's */}
-      <IonRouterOutlet id="main" key={epoch}>
-        <Route exact path="/login" render={() => (user ? <Redirect to={landing ?? "/dashboard"} /> : <Login />)} />
-        <Route exact path="/signup" render={() => (user ? <Redirect to={landing ?? "/dashboard"} /> : <Signup />)} />
-        {PROTECTED.map(({ path, component: C }) => (
-          <Route key={path} exact path={path} render={() => (user ? <C /> : <Redirect to={loginUrl} />)} />
-        ))}
-        <Route exact path="/" render={() => <Redirect to={user ? "/dashboard" : "/login"} />} />
-        <Route render={() => (user ? <NotFound /> : <Redirect to="/login" />)} />
-      </IonRouterOutlet>
-    </>
-  );
-}
-
-export default function App() {
-  const { ready } = useAuth();
-  return (
-    <IonApp>
-      {ready ? (
-        <IonReactRouter>
-          <Shell />
-        </IonReactRouter>
-      ) : (
-        <Splash />
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+      >
+        <Menu className="h-4 w-4" />
+        <span className="hidden sm:inline">Menu</span>
+        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <div role="menu" className="absolute right-0 top-full mt-2 w-60 rounded-2xl border bg-white p-2 shadow-lg">
+          {items.map(({ to, label, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              direction="root"
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
+                isActive(to) ? "bg-primary/10 font-medium text-primary" : "text-foreground hover:bg-muted",
+              )}
+            >
+              <Icon className="h-4 w-4" />
+              {label}
+            </Link>
+          ))}
+          <div className="my-1 h-px bg-border" />
+          <button
+            type="button"
+            onClick={() => void signOut()}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-muted"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
+        </div>
       )}
-      <Toaster richColors position="top-center" />
-    </IonApp>
+    </div>
   );
 }
