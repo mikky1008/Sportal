@@ -24,6 +24,11 @@ export function primaryRole(roles: readonly string[]): AccountRole | null {
 /** Where a brand-new account of each role lands right after registering. */
 export const POST_SIGNUP_PATH: Record<AccountRole, string> = {
   student_athlete: "/complete-profile",
-  coach: "/recruiting",
+  coach: "/coach/dashboard",
   university_representative: "/scholarships",
 };
+
+/** Where a signed-in user lands by default (no saved redirect): coaches get their own dashboard. */
+export function homePathFor(roles: readonly string[]): string {
+  return primaryRole(roles) === "coach" ? "/coach/dashboard" : "/dashboard";
+}
