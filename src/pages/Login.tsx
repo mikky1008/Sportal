@@ -66,7 +66,7 @@ function LoginScreen() {
         <div className="pointer-events-none absolute -bottom-32 -left-16 h-80 w-80 rounded-full bg-primary/30 blur-3xl" />
         <div className="relative flex h-full flex-col justify-between gap-10 px-6 py-8 sm:px-10 lg:min-h-screen lg:px-14 lg:py-12">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-electric-gradient font-display text-xl font-bold text-primary-foreground shadow-glow">S</span>
+            <span className="grid h-10 w-10 place-items-center rounded-full bg-electric-gradient font-display text-xl font-bold text-primary-foreground shadow-glow">S</span>
             <span className="font-display text-2xl font-bold tracking-wide">SPORTAL</span>
           </div>
           <div className="hidden lg:block">
@@ -180,7 +180,7 @@ function LoginScreen() {
                 <span>Remember me for 30 days</span>
               </label>
 
-              <button type="submit" disabled={loading} className={cn(btn.primary, "h-12 w-full text-base")}>
+              <button type="submit" disabled={loading} className={cn(btn.primary, "h-12 w-full rounded-full text-base")}>
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" /> Signing in…
