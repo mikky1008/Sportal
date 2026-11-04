@@ -20,7 +20,9 @@
 /* Side menu / sidebar uses the navy sidebar colors */
 ion-menu.sportal-menu {
   --background: var(--sidebar);
-  --width: 270px;
+  --width: 256px;
+  --min-width: 256px;
+  --max-width: 256px;
   --border: 0;
 }
 ion-menu.sportal-menu ion-content.sportal-menu-content {
@@ -31,8 +33,18 @@ ion-menu.sportal-menu ion-content.sportal-menu-content {
 
 /* Ionic's content area behaves like the old <body> */
 ion-content {
-  --background: var(--background);
+  --background: oklch(0.975 0.006 250);
   --color: var(--foreground);
+}
+
+/* Fixed-width sidebar next to the page on tablets and wider */
+ion-split-pane {
+  --side-width: 256px;
+  --side-min-width: 256px;
+  --side-max-width: 256px;
+}
+ion-split-pane > ion-menu.menu-pane-visible {
+  position: relative;
 }
 ion-toolbar {
   --border-width: 0 0 1px 0;
