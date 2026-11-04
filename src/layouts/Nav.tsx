@@ -8,6 +8,7 @@ import { notifications } from "@/data/mock";
 import { Link } from "@/router-compat";
 import { useAuth } from "@/auth/AuthContext";
 import { cn } from "@/lib/utils";
+import { useIsDesktop } from "@/lib/useIsDesktop";
 
 export const nav = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -32,6 +33,7 @@ export function SideMenu() {
   const isActive = useIsActive();
   const { signOut } = useAuth();
   const [signingOut, setSigningOut] = useState(false);
+  const desktop = useIsDesktop();
   const unread = notifications.filter((n) => !n.read).length;
 
   async function onSignOut() {
@@ -45,11 +47,11 @@ export function SideMenu() {
   }
 
   return (
-    <IonMenu contentId="main" type="reveal" className="sportal-menu">
+    <IonMenu contentId="main" className="sportal-menu">
       <IonContent className="sportal-menu-content">
         <div className="flex h-full flex-col px-4 py-6">
           <div className="mb-8 flex items-center gap-2.5 px-2">
-            <span className="grid h-9 w-9 place-items-center rounded-xl bg-electric-gradient font-display text-lg font-bold text-primary-foreground shadow-glow">S</span>
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-electric-gradient font-display text-lg font-bold text-primary-foreground shadow-glow">S</span>
             <span className="font-display text-xl font-bold tracking-wide text-sidebar-accent-foreground">SPORTAL</span>
           </div>
           <nav aria-label="Main" className="flex flex-1 flex-col gap-1">
@@ -82,13 +84,15 @@ export function SideMenu() {
               </Link>
             </IonMenuToggle>
           </div>
-          <button
-            onClick={onSignOut}
-            disabled={signingOut}
-            className="mt-3 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-sidebar-foreground disabled:opacity-60"
-          >
-            <LogOut className="h-5 w-5" /> Sign out
-          </button>
+          {!desktop && (
+            <button
+              onClick={onSignOut}
+              disabled={signingOut}
+              className="mt-3 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-sidebar-foreground disabled:opacity-60"
+            >
+              <LogOut className="h-5 w-5" /> Sign out
+            </button>
+          )}
         </div>
       </IonContent>
     </IonMenu>
