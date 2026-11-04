@@ -6,11 +6,13 @@ import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { Page } from "@/components/Page";
 import { Link } from "@/router-compat";
+import { homePathFor } from "@/lib/roles";
 
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
 import CompleteProfile from "@/pages/CompleteProfile";
 import Dashboard from "@/pages/Dashboard";
+import CoachDashboard from "@/pages/CoachDashboard";
 import Profile from "@/pages/Profile";
 import Performance from "@/pages/Performance";
 import NewPractice from "@/pages/NewPractice";
@@ -28,6 +30,7 @@ setupIonicReact({ mode: "ios", animated: false });
 const PROTECTED: { path: string; component: ComponentType }[] = [
   { path: "/complete-profile", component: CompleteProfile },
   { path: "/dashboard", component: Dashboard },
+  { path: "/coach/dashboard", component: CoachDashboard },
   { path: "/profile", component: Profile },
   { path: "/performance", component: Performance },
   { path: "/performance/new", component: NewPractice },
@@ -76,12 +79,12 @@ function Shell() {
     <>
       {/* `key` throws the cached screens away on every sign in / sign out, so one account never sees another's */}
       <IonRouterOutlet id="main" key={epoch}>
-        <Route exact path="/login" render={() => (user ? <Redirect to={landing ?? "/dashboard"} /> : <Login />)} />
-        <Route exact path="/signup" render={() => (user ? <Redirect to={landing ?? "/dashboard"} /> : <Signup />)} />
+        <Route exact path="/login" render={() => (user ? <Redirect to={landing ?? homePathFor(user.roles)} /> : <Login />)} />
+        <Route exact path="/signup" render={() => (user ? <Redirect to={landing ?? homePathFor(user.roles)} /> : <Signup />)} />
         {PROTECTED.map(({ path, component: C }) => (
           <Route key={path} exact path={path} render={() => (user ? <C /> : <Redirect to={loginUrl} />)} />
         ))}
-        <Route exact path="/" render={() => <Redirect to={user ? "/dashboard" : "/login"} />} />
+        <Route exact path="/" render={() => <Redirect to={user ? homePathFor(user.roles) : "/login"} />} />
         <Route render={() => (user ? <NotFound /> : <Redirect to="/login" />)} />
       </IonRouterOutlet>
     </>
