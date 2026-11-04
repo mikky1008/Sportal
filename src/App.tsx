@@ -23,7 +23,7 @@ import AthleteShowcase from "@/pages/AthleteShowcase";
 import Notifications from "@/pages/Notifications";
 import Settings from "@/pages/Settings";
 
-setupIonicReact({ mode: "ios" });
+setupIonicReact({ mode: "ios", animated: false });
 
 /** Screens that need a signed-in user. Anyone else is sent to /login and brought back afterwards. */
 const PROTECTED: { path: string; component: ComponentType }[] = [
