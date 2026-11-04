@@ -1,0 +1,48 @@
+/* Ionic theme, matched to Sportal's blue / navy palette (see styles.css for the full token set). */
+:root {
+  --ion-font-family: "DM Sans", system-ui, -apple-system, sans-serif;
+
+  --ion-color-primary: #2f6fe4;
+  --ion-color-primary-rgb: 47, 111, 228;
+  --ion-color-primary-contrast: #ffffff;
+  --ion-color-primary-contrast-rgb: 255, 255, 255;
+  --ion-color-primary-shade: #2961c8;
+  --ion-color-primary-tint: #437de6;
+
+  --ion-background-color: #f7f8fb;
+  --ion-text-color: #0f1b3d;
+  --ion-toolbar-background: #ffffff;
+  --ion-toolbar-color: #0f1b3d;
+  --ion-item-background: #ffffff;
+  --ion-tab-bar-background: #ffffff;
+}
+
+/* Side menu / sidebar uses the navy sidebar colors */
+ion-menu.sportal-menu {
+  --background: var(--sidebar);
+  --width: 270px;
+  --border: 0;
+}
+ion-menu.sportal-menu ion-content.sportal-menu-content {
+  --background: var(--sidebar);
+  --padding-top: var(--ion-safe-area-top, 0px);
+  --padding-bottom: var(--ion-safe-area-bottom, 0px);
+}
+
+/* Ionic's content area behaves like the old <body> */
+ion-content {
+  --background: var(--background);
+  --color: var(--foreground);
+}
+ion-toolbar {
+  --border-width: 0 0 1px 0;
+  --border-color: var(--border);
+}
+
+/* Keep Tailwind's buttons/links looking right inside Ionic */
+a { text-decoration: none; color: inherit; }
+button { font-family: inherit; }
+/* iOS zooms in on inputs under 16px; keep the app's dense look but stop the zoom */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+}

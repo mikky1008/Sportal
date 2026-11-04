@@ -1,0 +1,5 @@
+{
+  "name": "Sportal",
+  "integrations": { "capacitor": {} },
+  "type": "react-vite"
+}
