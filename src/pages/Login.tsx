@@ -195,7 +195,7 @@ function LoginScreen() {
           </div>
           <p className="mt-5 text-center text-xs text-muted-foreground">
             Don't have an account?{" "}
-            <Link to="/signup" direction="forward" className="font-semibold text-primary hover:underline">Create one</Link>
+            <Link to="/signup" direction="none" className="font-semibold text-primary hover:underline">Create one</Link>
           </p>
         </div>
       </main>
