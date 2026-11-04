@@ -39,9 +39,6 @@ ion-toolbar {
   --border-color: var(--border);
 }
 
-/* Keep Tailwind's buttons/links looking right inside Ionic */
-a { text-decoration: none; color: inherit; }
-button { font-family: inherit; }
 /* iOS zooms in on inputs under 16px; keep the app's dense look but stop the zoom */
 @media (max-width: 767px) {
   input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
