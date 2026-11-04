@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { IonContent, IonFooter, IonPage } from "@ionic/react";
-import { Bell, ChevronDown, LogOut, Menu, Search } from "lucide-react";
+import { Bell, ChevronDown, LogOut, Search, Settings } from "lucide-react";
 import { notifications } from "@/data/mock";
 import { useAthleteProfile } from "@/lib/profileStore";
 import { Link } from "@/router-compat";
@@ -53,7 +53,7 @@ export function Page({ children, shell = true, backTo, hideTabs }: PageProps) {
   );
 }
 
-/** Top navigation: logo, main tabs (tablet and up), notifications, you, and a Menu dropdown. */
+/** Top navigation: logo, main tabs (tablet and up), search, notifications, and your profile with a settings dropdown. */
 function TopBar({ backTo }: { backTo?: string }) {
   const athlete = useAthleteProfile();
   const { pathname } = useLocation();
@@ -62,64 +62,76 @@ function TopBar({ backTo }: { backTo?: string }) {
   const tabs = nav.filter((n) => TOP_TABS.includes(n.to));
 
   return (
-    <header className="sticky top-0 z-30 border-b bg-white pt-[var(--ion-safe-area-top,0px)]">
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 sm:px-6 md:h-16 md:gap-4 lg:px-8">
+    <header
+      className="sticky top-0 z-30 border-b border-white/10 pt-[var(--ion-safe-area-top,0px)] text-white"
+      style={{ background: "linear-gradient(90deg, #0a1f44 0%, #0f3160 55%, #0a1d3f 100%)" }}
+    >
+      <div className="mx-auto flex h-14 max-w-[1400px] items-center gap-3 px-4 sm:px-6 md:h-16 md:gap-4 lg:px-8">
         {backTo && (
-          <Link to={backTo} direction="back" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-card text-sm" aria-label="Back">
+          <Link to={backTo} direction="back" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/15 bg-white/5 text-sm" aria-label="Back">
             ←
           </Link>
         )}
         <Link to="/dashboard" direction="root" className="flex shrink-0 items-center gap-2.5" aria-label="Sportal home">
-          <span className="grid h-9 w-9 place-items-center rounded-full bg-electric-gradient font-display text-lg font-bold text-primary-foreground shadow-glow">S</span>
-          <span className="font-display text-xl font-bold tracking-wide text-foreground">SPORTAL</span>
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-[#1c4274] font-display text-xl font-bold text-white">S</span>
+          <span className="font-display text-2xl font-bold tracking-wide text-white">SPORTAL</span>
         </Link>
 
-        <div className="relative hidden w-72 xl:block">
-          <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <nav aria-label="Main" className="ml-2 hidden items-center md:flex">
+          {tabs.map(({ to, label, icon: Icon }) => (
+            <Link
+              key={to}
+              to={to}
+              direction="root"
+              aria-current={isActive(to) ? "page" : undefined}
+              className={cn(
+                "relative flex h-16 items-center gap-2 px-4 text-[15px] transition-colors",
+                isActive(to) ? "text-white" : "text-[#9db3d3] hover:text-white",
+              )}
+            >
+              <Icon className="h-5 w-5" />
+              {label}
+              {isActive(to) && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-white/80" />}
+            </Link>
+          ))}
+        </nav>
+
+        <div className="relative ml-2 hidden max-w-xl flex-1 lg:block">
+          <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-[#c5d3ea]" />
           <input
-            type="search"
-            placeholder="Search skills, rankings, sessions…"
-            className="h-10 w-full rounded-full border bg-card pl-11 pr-4 text-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/15"
+            type="text"
+            placeholder="Search athletes, teams, or training sessions..."
+            className="h-11 w-full rounded-full border border-white/15 bg-[#0a1b3a]/70 pl-12 pr-12 text-sm text-white outline-none placeholder:text-[#9db3d3] focus:border-sky-400 focus:ring-4 focus:ring-sky-400/20"
           />
+          <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c5d3ea]" />
         </div>
 
-        <div className="ml-auto flex items-center gap-1">
-          <nav aria-label="Main" className="hidden items-center gap-1 md:flex">
-            {tabs.map(({ to, label, icon: Icon }) => (
-              <Link
-                key={to}
-                to={to}
-                direction="root"
-                className={cn(
-                  "flex items-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-colors",
-                  isActive(to) ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
-                )}
-              >
-                <Icon className="h-4 w-4" />
-                {label}
-              </Link>
-            ))}
-          </nav>
-
-          <span className="mx-2 hidden h-6 w-px bg-border md:block" aria-hidden="true" />
-
-          <Link to="/notifications" direction="root" aria-label={`Notifications, ${unread} unread`} className="relative grid h-10 w-10 place-items-center rounded-full border bg-card">
+        <div className="ml-auto flex items-center gap-3">
+          <Link to="/notifications" direction="root" aria-label={`Notifications, ${unread} unread`} className="relative grid h-11 w-11 place-items-center rounded-full bg-white/5 text-[#c5d3ea] transition hover:bg-white/10 hover:text-white">
             <Bell className="h-5 w-5" />
-            {unread > 0 && <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />}
-          </Link>
-          <Link to="/profile" direction="root" className="flex items-center gap-2 rounded-full p-1 pr-2 lg:pr-3" aria-label="My profile">
-            <img src={juan} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-primary/30" />
-            <span className="hidden text-sm font-semibold lg:inline">{athlete.firstName}</span>
+            {unread > 0 && (
+              <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1 text-[11px] font-semibold leading-none text-white">{unread}</span>
+            )}
           </Link>
 
-          <MenuDropdown />
+          <div className="flex items-center gap-2 rounded-full border border-white/15 bg-white/5 py-1 pl-1 pr-2">
+            <Link to="/profile" direction="root" className="flex items-center gap-2" aria-label="My profile">
+              <span className="relative">
+                <img src={juan} alt="" className="h-9 w-9 rounded-full object-cover ring-2 ring-emerald-400" />
+                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-[#0f2f5e] bg-emerald-400" />
+              </span>
+              <span className="hidden text-sm font-medium text-white sm:inline">{athlete.firstName}</span>
+            </Link>
+            <span className="hidden h-5 w-px bg-white/20 sm:block" aria-hidden="true" />
+            <MenuDropdown />
+          </div>
         </div>
       </div>
     </header>
   );
 }
 
-/** "Menu" button that drops down the less important pages and Sign out. */
+/** Gear + chevron button that drops down the less important pages and Sign out. */
 function MenuDropdown() {
   const { signOut } = useAuth();
   const { pathname } = useLocation();
@@ -148,16 +160,16 @@ function MenuDropdown() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-label="Menu"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex items-center gap-1.5 rounded-full border bg-card px-3 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+        className="flex items-center gap-1 rounded-full px-1.5 py-1.5 text-[#c5d3ea] transition hover:text-white"
       >
-        <Menu className="h-4 w-4" />
-        <span className="hidden sm:inline">Menu</span>
+        <Settings className="h-5 w-5" />
         <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div role="menu" className="absolute right-0 top-full mt-2 w-60 rounded-2xl border bg-white p-2 shadow-lg">
+        <div role="menu" className="absolute right-0 top-full mt-3 w-60 rounded-2xl border bg-white p-2 text-foreground shadow-lg">
           {items.map(({ to, label, icon: Icon }) => (
             <Link
               key={to}
