@@ -1,4 +1,4 @@
-import { IonApp, IonRouterOutlet, IonSplitPane, setupIonicReact } from "@ionic/react";
+import { IonApp, IonRouterOutlet, setupIonicReact } from "@ionic/react";
 import { IonReactRouter } from "@ionic/react-router";
 import { Redirect, Route, useLocation } from "react-router-dom";
 import type { ComponentType } from "react";
@@ -78,8 +78,9 @@ function Shell() {
   const loginUrl = `/login?redirect=${encodeURIComponent(pathname + search)}`;
 
   return (
-    <IonSplitPane contentId="main" when="md" disabled={noMenu}>
-      {user && <SideMenu />}
+    <>
+      {/* phones only: the slide-in menu. Tablets and desktop use the top navigation bar inside <Page> */}
+      {user && !noMenu && <SideMenu />}
       {/* `key` throws the cached screens away on every sign in / sign out, so one account never sees another's */}
       <IonRouterOutlet id="main" key={epoch}>
         <Route exact path="/login" render={() => (user ? <Redirect to={landing ?? "/dashboard"} /> : <Login />)} />
@@ -90,7 +91,7 @@ function Shell() {
         <Route exact path="/" render={() => <Redirect to={user ? "/dashboard" : "/login"} />} />
         <Route render={() => (user ? <NotFound /> : <Redirect to="/login" />)} />
       </IonRouterOutlet>
-    </IonSplitPane>
+    </>
   );
 }
 
