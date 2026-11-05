@@ -274,46 +274,45 @@
   }
 }
 
-/* ---------- Coach layout: navy & sky-blue theme ----------
-   Scoped to `.coach-theme` (set by layouts/CoachLayout.tsx), so the Student-Athlete screens
-   keep their own colors. Only the CSS variables are re-pointed; every shared component
-   (Card, Pill, btn, ProgressBar...) then picks up the coach palette automatically.
-   Navy #142B4A · Sky blue #55B8ED · Background #F5F8FC · White #FFFFFF · Text #243247 */
+/* ---------- Coach layout ----------
+   Scoped to `.coach-theme` (set by layouts/CoachLayout.tsx). The coach now uses the exact same
+   blues as the Student-Athlete screens (same values as :root and the athlete --shell-* tokens),
+   so the two dashboards look like one product. */
 .coach-theme {
-  --background: #f5f8fc;
-  --foreground: #243247;
-  --card: #ffffff;
-  --card-foreground: #243247;
-  --popover: #ffffff;
-  --popover-foreground: #243247;
-  --primary: #142b4a;
-  --primary-foreground: #ffffff;
-  --secondary: #eef3f9;
-  --secondary-foreground: #142b4a;
-  --accent: #e3f3fc;
-  --accent-foreground: #142b4a;
-  --muted: #eaf0f7;
-  --muted-foreground: #5b6b82;
-  --border: #dce5ef;
-  --input: #dce5ef;
-  --ring: #55b8ed;
-  --navy: #142b4a;
-  --navy-foreground: #ffffff;
-  --navy-muted: #a9bcd6;
-  --electric: #55b8ed;
-  --gradient-electric: linear-gradient(135deg, #142b4a, #24558a);
-  --gradient-hero: linear-gradient(135deg, #142b4a 0%, #1a3a63 65%, #24558a 100%);
-  --shadow-card: 0 1px 2px rgb(20 43 74 / 6%), 0 8px 24px -12px rgb(20 43 74 / 18%);
-  --shadow-glow: 0 10px 30px -12px rgb(85 184 237 / 55%);
+  --background: oklch(0.975 0.006 250);
+  --foreground: oklch(0.2 0.05 262);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.05 262);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.2 0.05 262);
+  --primary: oklch(0.58 0.2 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.015 252);
+  --secondary-foreground: oklch(0.25 0.06 262);
+  --accent: oklch(0.93 0.04 252);
+  --accent-foreground: oklch(0.3 0.12 258);
+  --muted: oklch(0.955 0.01 252);
+  --muted-foreground: oklch(0.5 0.03 258);
+  --border: oklch(0.91 0.015 252);
+  --input: oklch(0.9 0.015 252);
+  --ring: oklch(0.58 0.2 255);
+  --navy: oklch(0.21 0.06 263);
+  --navy-foreground: oklch(0.97 0.01 250);
+  --navy-muted: oklch(0.72 0.04 255);
+  --electric: oklch(0.66 0.19 248);
+  --gradient-hero: linear-gradient(135deg, oklch(0.2 0.06 264) 0%, oklch(0.27 0.1 260) 60%, oklch(0.4 0.17 255) 100%);
+  --gradient-electric: linear-gradient(135deg, oklch(0.6 0.2 255), oklch(0.68 0.17 240));
+  --shadow-card: 0 1px 2px oklch(0.2 0.05 262 / 5%), 0 8px 24px -12px oklch(0.2 0.05 262 / 15%);
+  --shadow-glow: 0 10px 30px -10px oklch(0.6 0.2 255 / 55%);
 
-  --shell-bg: #142b4a;
+  --shell-bg: linear-gradient(90deg, #0a1f44 0%, #0f3160 55%, #0a1d3f 100%);
   --shell-fg: #ffffff;
-  --shell-muted: #a9bcd6;
+  --shell-muted: #9db3d3;
   --shell-icon: #c5d3ea;
-  --shell-logo-bg: #55b8ed;
-  --shell-logo-fg: #142b4a;
-  --shell-underline: #55b8ed;
-  --shell-focus: #55b8ed;
-  --shell-avatar-ring: #55b8ed;
-  --shell-dot-border: #142b4a;
+  --shell-logo-bg: #1c4274;
+  --shell-logo-fg: #ffffff;
+  --shell-underline: rgb(255 255 255 / 0.8);
+  --shell-focus: #38bdf8;
+  --shell-avatar-ring: #34d399;
+  --shell-dot-border: #0f2f5e;
 }
