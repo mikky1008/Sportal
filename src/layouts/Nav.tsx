@@ -3,6 +3,8 @@ import {
   LayoutDashboard, User, Activity, Trophy, GraduationCap, UserSearch, Bell, Settings, Plus,
 } from "lucide-react";
 import { Link } from "@/router-compat";
+import { useAuth } from "@/auth/AuthContext";
+import { homePathFor } from "@/lib/roles";
 import { cn } from "@/lib/utils";
 
 export const nav = [
@@ -26,13 +28,16 @@ function useIsActive() {
 /** Phone tab bar: Dashboard, Performance, a big Practice button, Rankings, Profile. */
 export function BottomNav() {
   const isActive = useIsActive();
+  const { user } = useAuth();
+  const home = user ? homePathFor(user.roles) : "/dashboard";
   const { pathname } = useLocation();
   return (
     <nav aria-label="Mobile" className="border-t bg-card/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
       <div className="grid grid-cols-5 items-end">
-        {tabs.slice(0, 2).map((item) => (
-          <TabItem key={item.to} {...item} active={isActive(item.to) && pathname !== "/performance/new"} />
-        ))}
+        {tabs.slice(0, 2).map((item) => {
+          const to = item.to === "/dashboard" ? home : item.to; // coaches: their own dashboard
+          return <TabItem key={item.to} {...item} to={to} active={isActive(to) && pathname !== "/performance/new"} />;
+        })}
         <Link to="/performance/new" aria-label="Start new practice" className="-mt-6 flex flex-col items-center pb-2">
           <span className="grid h-14 w-14 place-items-center rounded-2xl bg-electric-gradient text-primary-foreground shadow-glow"><Plus className="h-7 w-7" /></span>
           <span className="mt-1 text-[11px] font-semibold text-primary">Practice</span>
