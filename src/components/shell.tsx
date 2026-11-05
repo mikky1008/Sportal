@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { Bell, ChevronDown, Search, Settings, type LucideIcon } from "lucide-react";
+import { Bell, ChevronDown, Menu, Search, type LucideIcon } from "lucide-react";
 import { Link } from "@/router-compat";
 import { PersonAvatar } from "@/components/avatar";
 import { cn } from "@/lib/utils";
@@ -196,14 +196,13 @@ export function HeaderUser({ name, shortName, src }: { name: string; shortName?:
   );
 }
 
-export const HeaderPillDivider = () => <span className="hidden h-5 w-px bg-white/20 sm:block" aria-hidden="true" />;
+export const HeaderPillDivider = () => <span className="h-5 w-px bg-white/20" aria-hidden="true" />;
 
-/** Gear + chevron, the visual for "open the menu". */
-export function MenuGlyph({ open }: { open: boolean }) {
+/** Hamburger, the visual for "open the menu". Same in the athlete and coach pills. */
+export function MenuGlyph({ open: _open }: { open: boolean }) {
   return (
-    <span className="flex items-center gap-1 text-shell-icon">
-      <Settings className="hidden h-5 w-5 lg:block" />
-      <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
+    <span className="flex items-center text-shell-icon">
+      <Menu className="h-5 w-5" />
     </span>
   );
 }
