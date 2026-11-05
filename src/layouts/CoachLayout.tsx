@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { IonContent, IonPage } from "@ionic/react";
 import { toast } from "sonner";
 import {
-  Building2, ChevronDown, Compass, Handshake, LayoutDashboard, LogOut, MessageSquare, Settings, User, UserCheck, Users,
+  Building2, Compass, Handshake, LayoutDashboard, LogOut, MessageSquare, Settings, User, UserCheck, Users,
   type LucideIcon,
 } from "lucide-react";
 import { Link } from "@/router-compat";
@@ -11,9 +11,8 @@ import { useAuth } from "@/auth/AuthContext";
 import { useCoachProfile } from "@/lib/coachProfileStore";
 import {
   AppHeader, DropdownDivider, DropdownLabel, DropdownPanel, HeaderBrand, HeaderNavItem, HeaderPill, HeaderPillDivider,
-  HeaderSearch, HeaderUser, MenuGlyph, NotificationBell, PageBody, dropdownItemClass, headerNavClass, useDropdown,
+  HeaderSearch, HeaderUser, MenuGlyph, NotificationBell, PageBody, dropdownItemClass, useDropdown,
 } from "@/components/shell";
-import { cn } from "@/lib/utils";
 
 /**
  * Coach shell. It is built from the same pieces as the Student-Athlete `Page` shell (see
@@ -48,28 +47,6 @@ const MORE_NAV: NavEntry[] = [
 const SAMPLE_NOTIFICATIONS = ["New affiliation request from a student-athlete", "A recruiter replied to your inquiry", "An athlete updated their profile"];
 
 const comingSoon = (label: string) => toast(`${label} is coming soon`, { description: "This coach page hasn't been built yet." });
-
-function MoreDropdown() {
-  const { open, setOpen, ref } = useDropdown();
-  return (
-    <div ref={ref} className="relative">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-haspopup="menu" aria-expanded={open} className={headerNavClass(false)}>
-        More
-        <ChevronDown className={cn("h-4 w-4 transition-transform", open && "rotate-180")} />
-      </button>
-      {open && (
-        <DropdownPanel className="left-0 right-auto">
-          {MORE_NAV.map(({ label, icon: Icon }) => (
-            <button key={label} type="button" role="menuitem" className={dropdownItemClass()} onClick={() => { setOpen(false); comingSoon(label); }}>
-              <Icon className="h-4 w-4" />
-              {label}
-            </button>
-          ))}
-        </DropdownPanel>
-      )}
-    </div>
-  );
-}
 
 function NotificationsMenu() {
   const { open, setOpen, ref } = useDropdown();
@@ -111,9 +88,9 @@ function ProfileMenu({ name, shortName }: { name: string; shortName: string }) {
       </HeaderPill>
       {open && (
         <DropdownPanel className="max-h-[calc(100dvh-5rem)] overflow-y-auto">
-          {/* phones only: the main navigation lives here (tablet and up has it in the top bar) */}
+          {/* phones only: the main links live here (tablet and up has them in the top bar) */}
           <div className="md:hidden">
-            {[...MAIN_NAV, ...MORE_NAV].map((item) =>
+            {MAIN_NAV.map((item) =>
               item.to ? (
                 <Link key={item.label} to={item.to} direction="root" role="menuitem" aria-current={isActive(item.to) ? "page" : undefined} className={dropdownItemClass(isActive(item.to))}>
                   <item.icon className="h-4 w-4" />
@@ -128,6 +105,14 @@ function ProfileMenu({ name, shortName }: { name: string; shortName: string }) {
             )}
             <DropdownDivider />
           </div>
+          {/* the former "More" items, on every screen size */}
+          {MORE_NAV.map((item) => (
+            <button key={item.label} type="button" role="menuitem" className={dropdownItemClass()} onClick={() => { setOpen(false); comingSoon(item.label); }}>
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
+          <DropdownDivider />
           <button type="button" role="menuitem" className={dropdownItemClass()} onClick={() => { setOpen(false); comingSoon("My Profile"); }}>
             <User className="h-4 w-4" />
             My Profile
@@ -164,7 +149,7 @@ export function CoachLayout({ children }: { children: ReactNode }) {
               {MAIN_NAV.map((item) => (
                 <HeaderNavItem key={item.label} label={item.label} icon={item.icon} to={item.to} active={isActive(item.to)} onClick={() => comingSoon(item.label)} />
               ))}
-              <MoreDropdown />
+              
             </nav>
 
             <HeaderSearch placeholder="Search athletes..." />
