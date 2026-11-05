@@ -89,6 +89,21 @@ export function registerLocalAccount(
   active = { ...account, id: userId };
 }
 
+/**
+ * Make sure this browser knows the account. Used when someone signs in on a browser that did not
+ * create the account (another device, cleared storage): the names come from the server, so the
+ * profile starts with the signup name instead of the sample profile. An account this browser
+ * already knows is left alone, so edits made in Settings are never overwritten.
+ */
+export function ensureLocalAccount(
+  userId: string,
+  account: LocalAccount,
+  storage: StorageLike | null = browserStorage(),
+): void {
+  if (readRegistry(storage)[userId]) return;
+  registerLocalAccount(userId, account, storage);
+}
+
 export function activeAccount(): (LocalAccount & { id: string }) | null {
   return active;
 }
