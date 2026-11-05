@@ -52,6 +52,15 @@
   --color-chart-3: var(--chart-3);
   --color-chart-4: var(--chart-4);
   --color-chart-5: var(--chart-5);
+  --color-shell-fg: var(--shell-fg);
+  --color-shell-muted: var(--shell-muted);
+  --color-shell-icon: var(--shell-icon);
+  --color-shell-logo: var(--shell-logo-bg);
+  --color-shell-logo-fg: var(--shell-logo-fg);
+  --color-shell-underline: var(--shell-underline);
+  --color-shell-focus: var(--shell-focus);
+  --color-shell-ring: var(--shell-avatar-ring);
+  --color-shell-dot-border: var(--shell-dot-border);
   --color-sidebar: var(--sidebar);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
@@ -103,6 +112,18 @@
   --chart-4: oklch(0.45 0.1 262);
   --chart-5: oklch(0.7 0.12 220);
 
+  /* App shell (top bar). Same structure for every role; only these values differ. */
+  --shell-bg: linear-gradient(90deg, #0a1f44 0%, #0f3160 55%, #0a1d3f 100%);
+  --shell-fg: #ffffff;
+  --shell-muted: #9db3d3;
+  --shell-icon: #c5d3ea;
+  --shell-logo-bg: #1c4274;
+  --shell-logo-fg: #ffffff;
+  --shell-underline: rgb(255 255 255 / 0.8);
+  --shell-focus: #38bdf8;
+  --shell-avatar-ring: #34d399;
+  --shell-dot-border: #0f2f5e;
+
   --sidebar: oklch(0.2 0.06 263);
   --sidebar-foreground: oklch(0.8 0.03 255);
   --sidebar-primary: oklch(0.66 0.19 248);
@@ -133,6 +154,7 @@
 @utility bg-electric-gradient { background-image: var(--gradient-electric); }
 @utility shadow-card { box-shadow: var(--shadow-card); }
 @utility shadow-glow { box-shadow: var(--shadow-glow); }
+@utility bg-shell { background: var(--shell-bg); }
 @utility surface { background-color: var(--card); border-radius: var(--radius-2xl); box-shadow: var(--shadow-card); border: 1px solid var(--border); }
 
 /* ---------- Dropdown (<Select> in components/common.tsx) ---------- */
@@ -283,4 +305,15 @@
   --gradient-hero: linear-gradient(135deg, #142b4a 0%, #1a3a63 65%, #24558a 100%);
   --shadow-card: 0 1px 2px rgb(20 43 74 / 6%), 0 8px 24px -12px rgb(20 43 74 / 18%);
   --shadow-glow: 0 10px 30px -12px rgb(85 184 237 / 55%);
+
+  --shell-bg: #142b4a;
+  --shell-fg: #ffffff;
+  --shell-muted: #a9bcd6;
+  --shell-icon: #c5d3ea;
+  --shell-logo-bg: #55b8ed;
+  --shell-logo-fg: #142b4a;
+  --shell-underline: #55b8ed;
+  --shell-focus: #55b8ed;
+  --shell-avatar-ring: #55b8ed;
+  --shell-dot-border: #142b4a;
 }
