@@ -11,7 +11,7 @@ import { useAuth } from "@/auth/AuthContext";
 import { useCoachProfile } from "@/lib/coachProfileStore";
 import {
   AppHeader, DropdownDivider, DropdownLabel, DropdownPanel, HeaderBrand, HeaderNavItem, HeaderPill, HeaderPillDivider,
-  HeaderUser, MenuGlyph, NotificationBell, PageBody, dropdownItemClass, headerNavClass, useDropdown,
+  HeaderSearch, HeaderUser, MenuGlyph, NotificationBell, PageBody, dropdownItemClass, headerNavClass, useDropdown,
 } from "@/components/shell";
 import { cn } from "@/lib/utils";
 
@@ -176,9 +176,11 @@ export function CoachLayout({ children }: { children: ReactNode }) {
               <MoreDropdown />
             </nav>
 
+            <HeaderSearch placeholder="Search athletes..." />
+
             <div className="ml-auto flex items-center gap-2 sm:gap-3">
               <NotificationsMenu />
-              <ProfileMenu name={name} shortName={profile.firstName || name} />
+              <ProfileMenu name={name} shortName={profile.lastName || profile.firstName || name} />
             </div>
           </AppHeader>
 
