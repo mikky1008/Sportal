@@ -7,6 +7,7 @@ import { useAthleteProfile } from "@/lib/profileStore";
 import { Link } from "@/router-compat";
 import { BottomNav, nav } from "@/layouts/Nav";
 import { useAuth } from "@/auth/AuthContext";
+import { homePathFor } from "@/lib/roles";
 import { useIsDesktop } from "@/lib/useIsDesktop";
 import { cn } from "@/lib/utils";
 import juan from "@/assets/juan.jpg";
@@ -56,6 +57,9 @@ export function Page({ children, shell = true, backTo, hideTabs }: PageProps) {
 /** Top navigation: logo, main tabs (tablet and up), search, notifications, and your profile with a settings dropdown. */
 function TopBar({ backTo }: { backTo?: string }) {
   const athlete = useAthleteProfile();
+  const { user } = useAuth();
+  // A coach's "home" is the coach dashboard, never the athlete one.
+  const home = user ? homePathFor(user.roles) : "/dashboard";
   const { pathname } = useLocation();
   const unread = notifications.filter((n) => !n.read).length;
   const isActive = (to: string) => pathname === to || pathname.startsWith(to + "/");
@@ -72,15 +76,17 @@ function TopBar({ backTo }: { backTo?: string }) {
             ←
           </Link>
         )}
-        <Link to="/dashboard" direction="root" className="flex shrink-0 items-center gap-2.5" aria-label="Sportal home">
+        <Link to={home} direction="root" className="flex shrink-0 items-center gap-2.5" aria-label="Sportal home">
           <span className="grid h-10 w-10 place-items-center rounded-full bg-[#1c4274] font-display text-xl font-bold text-white">S</span>
           <span className="font-display text-2xl font-bold tracking-wide text-white">SPORTAL</span>
         </Link>
 
         <nav aria-label="Main" className="ml-2 hidden items-center md:flex">
-          {tabs.map(({ to, label, icon: Icon }) => (
+          {tabs.map(({ to: tabTo, label, icon: Icon }) => {
+            const to = tabTo === "/dashboard" ? home : tabTo;
+            return (
             <Link
-              key={to}
+              key={tabTo}
               to={to}
               direction="root"
               aria-current={isActive(to) ? "page" : undefined}
@@ -93,7 +99,8 @@ function TopBar({ backTo }: { backTo?: string }) {
               {label}
               {isActive(to) && <span className="absolute inset-x-2 bottom-0 h-0.5 rounded-full bg-white/80" />}
             </Link>
-          ))}
+            );
+          })}
         </nav>
 
         <div className="relative ml-2 hidden max-w-xl flex-1 lg:block">
