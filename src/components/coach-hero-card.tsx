@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Mail, Plus, Users, Zap, type LucideIcon } from "lucide-react";
+import { Plus } from "lucide-react";
 import { PersonAvatar } from "@/components/avatar";
 import { btn } from "@/components/common";
 
@@ -18,12 +18,14 @@ export interface CoachHeroCardProps {
 
 const FOOTER_NOTE = "Roster updates reflect real-time team activity. Figures shown are sample data for now.";
 
-function StatCard({ icon: Icon, value, label }: { icon: LucideIcon; value: number; label: string }) {
+function StatCard({ emoji, value, label }: { emoji: string; value: number; label: string }) {
   return (
     <div className="min-w-0 rounded-2xl bg-white/10 p-3 backdrop-blur sm:p-4">
-      <Icon className="h-4 w-4 text-gold" aria-hidden="true" />
-      <p className="mt-1 truncate font-display text-2xl font-bold sm:text-3xl">{value}</p>
-      <p className="text-[11px] font-medium uppercase tracking-wider text-navy-muted sm:text-xs">{label}</p>
+      <p className="flex items-center gap-2 font-display text-2xl font-bold sm:text-3xl">
+        <span className="text-xl sm:text-2xl" aria-hidden="true">{emoji}</span>
+        <span className="truncate">{value}</span>
+      </p>
+      <p className="mt-1 text-[11px] font-medium uppercase tracking-wider text-navy-muted sm:text-xs">{label}</p>
     </div>
   );
 }
@@ -40,9 +42,10 @@ export function CoachHeroCard({
   return (
     <section
       aria-label="Coach profile overview"
-      className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#0d2340] via-[#122e52] to-[#163962] text-white shadow-card"
+      className="relative flex flex-col gap-6 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#0d2340] via-[#122e52] to-[#163962] p-5 text-white shadow-card sm:p-8"
     >
-      <div className="relative flex flex-col gap-6 p-5 sm:p-8 lg:flex-row lg:items-center">
+      {/* top: coach on the left, three stat cards on the right */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center">
         <div className="flex min-w-0 items-center gap-4 sm:gap-5">
           <PersonAvatar name={coachName} size="lg" shape="xl" tone="onDark" className="ring-2 ring-electric" />
           <div className="min-w-0">
@@ -54,15 +57,16 @@ export function CoachHeroCard({
         </div>
 
         <div className="grid grid-cols-3 gap-3 lg:ml-auto lg:min-w-[30rem]">
-          <StatCard icon={Users} value={totalRosterCount} label="Total Roster" />
-          <StatCard icon={Zap} value={activeTrainedCount} label="Active Trained" />
-          <StatCard icon={Mail} value={pendingRequestsCount} label="Pending Req" />
+          <StatCard emoji="👥" value={totalRosterCount} label="Total Roster" />
+          <StatCard emoji="⚡" value={activeTrainedCount} label="Active Trained" />
+          <StatCard emoji="📩" value={pendingRequestsCount} label="Pending Req" />
         </div>
       </div>
 
-      <div className="relative flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+      {/* bottom: note on the left, main action in the bottom-right corner (no divider line) */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <p className="text-sm text-navy-muted">{FOOTER_NOTE}</p>
-        <button type="button" onClick={onCreateTrainingPlan} className={`${btn.primary} sm:ml-auto`}>
+        <button type="button" onClick={onCreateTrainingPlan} className={`${btn.primary} shrink-0`}>
           <Plus className="h-4 w-4" aria-hidden="true" />
           Create Training Plan
         </button>
