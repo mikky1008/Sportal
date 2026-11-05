@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import * as client from "./authClient";
 import type { LoginResponse, PublicUser, RegisterInput, RegisterResponse } from "./types";
-import { activateAccount, deactivateAccount } from "@/lib/accountScope";
+import { activateAccount, deactivateAccount, ensureLocalAccount } from "@/lib/accountScope";
+import { primaryRole } from "@/lib/roles";
 import { profileStore } from "@/lib/profileStore";
 import { profileExtrasStore } from "@/lib/profileExtrasStore";
 import { coachProfileStore } from "@/lib/coachProfileStore";
@@ -27,8 +28,19 @@ const Ctx = createContext<AuthValue | null>(null);
 
 /** Point the browser-side profile stores at this account's own data. */
 function scopeStoresTo(user: PublicUser | null) {
-  if (user) activateAccount(user.id);
-  else deactivateAccount();
+  if (user) {
+    // Signed in on a browser that never saw this account: rebuild it from the names the server saved.
+    const role = primaryRole(user.roles);
+    if (role && user.firstName && user.lastName) {
+      ensureLocalAccount(user.id, {
+        type: role === "student_athlete" ? "athlete" : "coach",
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      });
+    }
+    activateAccount(user.id);
+  } else deactivateAccount();
   profileStore.refresh();
   profileExtrasStore.refresh();
   coachProfileStore.refresh();
