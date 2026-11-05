@@ -115,6 +115,45 @@ export function CoachCompletionCard() {
   );
 }
 
+/** One-line completion banner for the coach dashboard; the button opens the profile sheet at the next unfinished section. */
+export function CoachCompletionBanner() {
+  const { profile } = useCoachProfile();
+  const { percent, next, complete } = useMemo(() => computeCoachCompletion(profile), [profile]);
+  const [open, setOpen] = useState(false);
+  const [section, setSection] = useState<CoachSectionId | null>(null);
+  return (
+    <>
+      {!complete && (
+        <section
+          data-testid="coach-completion-banner"
+          aria-label="Profile completion"
+          className="surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-3">
+            <p className="shrink-0 text-sm font-semibold">
+              Profile <span data-testid="completion-percent">{percent}</span>% complete
+            </p>
+            <div className="min-w-0 flex-1">
+              <AnimatedBar percent={percent} label="Profile completion" />
+            </div>
+          </div>
+          <button
+            type="button"
+            className={cn(btn.primary, btn.sm, "w-full whitespace-nowrap sm:w-auto")}
+            onClick={() => {
+              setSection((next?.id as CoachSectionId | undefined) ?? "basic");
+              setOpen(true);
+            }}
+          >
+            Complete Profile
+          </button>
+        </section>
+      )}
+      <CoachProfileSheet open={open} section={section} onOpenChange={setOpen} />
+    </>
+  );
+}
+
 // ---------- helpers for the pages that save profile data ----------
 
 /** Completion of the signed-in athlete right now, read straight from the stores. */
