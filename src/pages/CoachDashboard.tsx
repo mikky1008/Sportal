@@ -104,9 +104,9 @@ function ProfileOverview() {
       coachingPosition={profile.positionTitle}
       assignedSport={profile.primarySport}
       schoolName={profile.organizationName}
-      totalRosterCount={stats[0].value}
-      activeTrainedCount={stats[1].value}
-      pendingRequestsCount={stats[2].value}
+      totalRosterCount={stats[0]?.value ?? 0}
+      activeTrainedCount={stats[1]?.value ?? 0}
+      pendingRequestsCount={stats[2]?.value ?? 0}
       badge={
         <span className={cn(
           "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-white",
