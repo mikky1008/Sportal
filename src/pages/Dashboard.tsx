@@ -23,7 +23,6 @@ function Dashboard() {
     <div className="flex flex-col gap-6">
       <ProfileHero
         ariaLabel="Athlete profile overview"
-        greeting={`Good morning, ${a.firstName}`}
         avatar={<PersonAvatar name={fullName} src={juan} size="lg" shape="xl" tone="onDark" className="ring-2 ring-electric" />}
         name={fullName}
         meta={[`${a.sport} • ${a.position}`, a.school]}
