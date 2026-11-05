@@ -252,26 +252,35 @@
   }
 }
 
-/* ---------- Coach layout: green & white theme ----------
+/* ---------- Coach layout: navy & sky-blue theme ----------
    Scoped to `.coach-theme` (set by layouts/CoachLayout.tsx), so the Student-Athlete screens
    keep their own colors. Only the CSS variables are re-pointed; every shared component
-   (Card, Pill, btn, ProgressBar...) then picks up the green automatically. */
+   (Card, Pill, btn, ProgressBar...) then picks up the coach palette automatically.
+   Navy #142B4A · Sky blue #55B8ED · Background #F5F8FC · White #FFFFFF · Text #243247 */
 .coach-theme {
-  --background: oklch(0.985 0.006 155);
-  --primary: oklch(0.55 0.15 152);
-  --primary-foreground: oklch(0.99 0 0);
-  --accent: oklch(0.945 0.04 155);
-  --accent-foreground: oklch(0.32 0.09 155);
-  --muted: oklch(0.96 0.01 155);
-  --secondary: oklch(0.955 0.015 155);
-  --border: oklch(0.92 0.015 155);
-  --input: oklch(0.91 0.015 155);
-  --ring: oklch(0.55 0.15 152);
-  --success: oklch(0.6 0.16 152);
-  --electric: oklch(0.62 0.16 150);
-  --gradient-electric: linear-gradient(135deg, oklch(0.5 0.15 155), oklch(0.62 0.17 150));
-  --gradient-hero: linear-gradient(135deg, oklch(0.27 0.07 158) 0%, oklch(0.36 0.1 155) 60%, oklch(0.5 0.15 150) 100%);
-  --shadow-glow: 0 10px 30px -10px oklch(0.55 0.15 152 / 50%);
-  --sidebar: oklch(0.99 0.004 155);
-  --sidebar-border: oklch(0.92 0.015 155);
+  --background: #f5f8fc;
+  --foreground: #243247;
+  --card: #ffffff;
+  --card-foreground: #243247;
+  --popover: #ffffff;
+  --popover-foreground: #243247;
+  --primary: #142b4a;
+  --primary-foreground: #ffffff;
+  --secondary: #eef3f9;
+  --secondary-foreground: #142b4a;
+  --accent: #e3f3fc;
+  --accent-foreground: #142b4a;
+  --muted: #eaf0f7;
+  --muted-foreground: #5b6b82;
+  --border: #dce5ef;
+  --input: #dce5ef;
+  --ring: #55b8ed;
+  --navy: #142b4a;
+  --navy-foreground: #ffffff;
+  --navy-muted: #a9bcd6;
+  --electric: #55b8ed;
+  --gradient-electric: linear-gradient(135deg, #142b4a, #24558a);
+  --gradient-hero: linear-gradient(135deg, #142b4a 0%, #1a3a63 65%, #24558a 100%);
+  --shadow-card: 0 1px 2px rgb(20 43 74 / 6%), 0 8px 24px -12px rgb(20 43 74 / 18%);
+  --shadow-glow: 0 10px 30px -12px rgb(85 184 237 / 55%);
 }
