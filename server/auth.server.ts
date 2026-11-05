@@ -98,11 +98,18 @@ async function toPublicUser(
   db: Db,
   row: Pick<UserRow, "id" | "email" | "username" | "display_name">,
 ): Promise<PublicUser> {
+  // The names typed on the Sign up form, so the app can show them on any browser or device.
+  const [profile] = await db<{ first_name: string | null; last_name: string | null }[]>`
+    SELECT first_name, last_name FROM user_profiles WHERE user_id = ${row.id}`;
+  const firstName = profile?.first_name?.trim();
+  const lastName = profile?.last_name?.trim();
   return {
     id: row.id,
     email: row.email,
     username: row.username,
     displayName: row.display_name,
+    ...(firstName ? { firstName } : {}),
+    ...(lastName ? { lastName } : {}),
     ...(await loadAccess(db, row.id)),
   };
 }
