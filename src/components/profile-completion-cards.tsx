@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
 import { Link } from "@/router-compat";
 import { toast } from "sonner";
-import { CompletionCard } from "@/components/profile-completion";
+import { AnimatedBar, CompletionCard } from "@/components/profile-completion";
 import { CoachProfileSheet } from "@/components/coach-profile-sheet";
 import { Pill, btn } from "@/components/common";
+import { cn } from "@/lib/utils";
 import { profileStore, useAthleteProfile } from "@/lib/profileStore";
 import { profileExtrasStore, useProfileExtras } from "@/lib/profileExtrasStore";
 import { useCoachProfile, type CoachVerificationStatus } from "@/lib/coachProfileStore";
@@ -33,6 +34,35 @@ export function AthleteCompletionCard() {
         <Link to="/complete-profile" search={{ section: s.id as AthleteSectionId }} className={className}>{children}</Link>
       )}
     />
+  );
+}
+
+/** One-line completion banner for the athlete dashboard: percent, thin bar, and a single button to the full profile form. */
+export function AthleteCompletionBanner() {
+  const { percent, next, complete } = useAthleteCompletion();
+  if (complete) return null;
+  return (
+    <section
+      data-testid="athlete-completion-banner"
+      aria-label="Profile completion"
+      className="surface flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:gap-4"
+    >
+      <div className="flex min-w-0 flex-1 items-center gap-3">
+        <p className="shrink-0 text-sm font-semibold">
+          Profile <span data-testid="completion-percent">{percent}</span>% complete
+        </p>
+        <div className="min-w-0 flex-1">
+          <AnimatedBar percent={percent} label="Profile completion" />
+        </div>
+      </div>
+      <Link
+        to="/complete-profile"
+        search={next ? { section: next.id as AthleteSectionId } : undefined}
+        className={cn(btn.primary, btn.sm, "w-full whitespace-nowrap sm:w-auto")}
+      >
+        Complete Profile
+      </Link>
+    </section>
   );
 }
 
