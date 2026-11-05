@@ -8,10 +8,11 @@ import { CoachLayout } from "@/layouts/CoachLayout";
 import { useCoachProfile, type CoachVerificationStatus } from "@/lib/coachProfileStore";
 import { directoryAthletes } from "@/data/mock";
 import type { DirectoryAthlete } from "@/types";
-import { Card, Delta, EmptyState, PageHeader, Pill, ProgressBar, SectionLink, StatTile, btn } from "@/components/common";
+import { Card, Delta, EmptyState, Pill, ProgressBar, SectionLink, StatTile, btn } from "@/components/common";
 import { AthleteProfileCard } from "@/components/athlete-card";
 import { PersonAvatar } from "@/components/avatar";
 import { ProfileHero } from "@/components/profile-hero";
+import { CoachCompletionBanner } from "@/components/profile-completion-cards";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------------------------
@@ -312,8 +313,8 @@ function CoachDashboard() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader className="mb-0" title={`Welcome back, ${profile.firstName || "Coach"}!`} subtitle="Here's an overview of your team and recruiting activity." />
       <ProfileOverview />
+      <CoachCompletionBanner />
       <SummaryStats />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <MyAthletes sport={sport} />
