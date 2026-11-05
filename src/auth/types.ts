@@ -5,6 +5,9 @@ export interface PublicUser {
   email: string;
   username: string;
   displayName: string;
+  /** from the Sign up form; absent for accounts created without names (e.g. by the admin script) */
+  firstName?: string;
+  lastName?: string;
   roles: string[];
   permissions: string[];
 }
