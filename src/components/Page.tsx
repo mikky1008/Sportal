@@ -94,7 +94,7 @@ function TopBar({ backTo }: { backTo?: string }) {
   );
 }
 
-/** Gear + chevron button that drops down the less important pages and Sign out. */
+/** Hamburger button that drops down the less important pages and Sign out. */
 function MenuDropdown() {
   const { signOut } = useAuth();
   const { pathname } = useLocation();
