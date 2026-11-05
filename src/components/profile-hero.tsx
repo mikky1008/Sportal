@@ -25,17 +25,20 @@ interface ProfileHeroProps {
   backdrop?: ReactNode;
   /** strip along the bottom: a note on the left, an action on the right */
   footer?: ReactNode;
+  /** small line at the very top of the card, e.g. "Good morning, Kim" */
+  greeting?: ReactNode;
 }
 
 /**
  * The profile card at the top of both dashboards: avatar, name, details and three highlight tiles.
  * Same structure for athletes and coaches; the content and the colors (from the theme) differ.
  */
-export function ProfileHero({ ariaLabel, avatar, name, meta = [], badge, tiles, tileSize = "stat", iconClassName = "text-gold", backdrop, footer }: ProfileHeroProps) {
+export function ProfileHero({ ariaLabel, avatar, name, meta = [], badge, tiles, tileSize = "stat", iconClassName = "text-gold", backdrop, footer, greeting }: ProfileHeroProps) {
   return (
     <section aria-label={ariaLabel} className="relative overflow-hidden rounded-3xl bg-hero text-navy-foreground shadow-card">
       {backdrop}
-      <div className="relative flex flex-col gap-6 p-5 sm:p-8 lg:flex-row lg:items-center">
+      {greeting && <p className="relative px-5 pt-4 text-sm font-medium text-navy-muted sm:px-8 sm:pt-6">{greeting}</p>}
+      <div className={cn("relative flex flex-col gap-6 p-5 sm:p-8 lg:flex-row lg:items-center", greeting && "pt-3 sm:pt-4")}>
         <div className="flex min-w-0 items-center gap-4 sm:gap-5">
           {avatar}
           <div className="min-w-0">
