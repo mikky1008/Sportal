@@ -5,11 +5,11 @@ import { skills } from "@/data/mock";
 import { useAthleteProfile } from "@/lib/profileStore";
 import { useHeadlineRanks } from "@/lib/useRankings";
 import { useSessions } from "@/lib/sessionStore";
-import { PageHeader, SectionHeading, SectionLink, StatTile, Delta, btn } from "@/components/common";
+import { SectionHeading, SectionLink, StatTile, Delta, btn } from "@/components/common";
 import { PersonAvatar } from "@/components/avatar";
 import { ProfileHero } from "@/components/profile-hero";
 import { PerformanceChart, SkillCard } from "@/components/performance";
-import { AthleteCompletionCard } from "@/components/profile-completion-cards";
+import { AthleteCompletionBanner } from "@/components/profile-completion-cards";
 import juan from "@/assets/juan.jpg";
 import court from "@/assets/court.jpg";
 
@@ -21,10 +21,9 @@ function Dashboard() {
   const fullName = `${a.firstName} ${a.lastName}`;
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader className="mb-0" title={`Good morning, ${a.firstName}!`} subtitle="Keep pushing. Every practice gets you closer to your goals." />
-
       <ProfileHero
         ariaLabel="Athlete profile overview"
+        greeting={`Good morning, ${a.firstName}`}
         avatar={<PersonAvatar name={fullName} src={juan} size="lg" shape="xl" tone="onDark" className="ring-2 ring-electric" />}
         name={fullName}
         meta={[`${a.sport} • ${a.position}`, a.school]}
@@ -42,7 +41,7 @@ function Dashboard() {
         }
       />
 
-      <AthleteCompletionCard />
+      <AthleteCompletionBanner />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatTile label="Accuracy" value="82%" icon={<Target />} hint={<Delta value={12} />} />
