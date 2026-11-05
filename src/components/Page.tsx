@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useLocation } from "react-router-dom";
 import { IonContent, IonFooter, IonPage } from "@ionic/react";
-import { ChevronDown, LogOut, Search } from "lucide-react";
+import { LogOut } from "lucide-react";
 import { notifications } from "@/data/mock";
 import { useAthleteProfile } from "@/lib/profileStore";
 import { Link } from "@/router-compat";
@@ -11,7 +11,7 @@ import { homePathFor } from "@/lib/roles";
 import { useIsDesktop } from "@/lib/useIsDesktop";
 import {
   AppHeader, DropdownDivider, DropdownPanel, HeaderBack, HeaderBrand, HeaderNavItem, HeaderPill, HeaderPillDivider,
-  HeaderUser, MenuGlyph, NotificationBell, PageBody, dropdownItemClass, useDropdown,
+  HeaderSearch, HeaderUser, MenuGlyph, NotificationBell, PageBody, dropdownItemClass, useDropdown,
 } from "@/components/shell";
 import juan from "@/assets/juan.jpg";
 
@@ -78,15 +78,7 @@ function TopBar({ backTo }: { backTo?: string }) {
         })}
       </nav>
 
-      <div className="relative ml-2 hidden max-w-xl flex-1 xl:block">
-        <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-shell-icon" />
-        <input
-          type="text"
-          placeholder="Search athletes, teams, or training sessions..."
-          className="h-11 w-full rounded-full border border-white/15 bg-black/20 pl-12 pr-12 text-sm text-shell-fg outline-none placeholder:text-shell-muted focus:border-shell-focus focus:ring-4 focus:ring-shell-focus/20"
-        />
-        <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-shell-icon" />
-      </div>
+      <HeaderSearch placeholder="Search athletes, teams, or training sessions..." />
 
       <div className="ml-auto flex items-center gap-2 sm:gap-3">
         <NotificationBell count={unread} to="/notifications" />
