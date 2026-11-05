@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
   BadgeCheck, Clock, Handshake, Inbox, MessageSquare,
-  Plus, Send, ShieldX, Star, UserCheck, UserPlus, Users, Activity, type LucideIcon,
+  Send, ShieldX, Star, UserCheck, UserPlus, Users, Activity, type LucideIcon,
 } from "lucide-react";
 import { CoachLayout } from "@/layouts/CoachLayout";
 import { useCoachProfile, type CoachVerificationStatus } from "@/lib/coachProfileStore";
@@ -11,10 +11,9 @@ import type { DirectoryAthlete } from "@/types";
 import { Card, Delta, EmptyState, Pill, ProgressBar, SectionLink, StatTile, btn } from "@/components/common";
 import { AthleteProfileCard } from "@/components/athlete-card";
 import { PersonAvatar } from "@/components/avatar";
-import { ProfileHero } from "@/components/profile-hero";
+import { CoachHeroCard } from "@/components/coach-hero-card";
 import { CoachCompletionBanner } from "@/components/profile-completion-cards";
 import { cn } from "@/lib/utils";
-import court from "@/assets/court.jpg";
 
 /* ---------------------------------------------------------------------------------------------
    COACH DASHBOARD (UI only)
@@ -100,11 +99,14 @@ function ProfileOverview() {
   const v = verification[verificationStatus];
 
   return (
-    <ProfileHero
-      ariaLabel="Coach profile overview"
-      avatar={<PersonAvatar name={name} size="lg" shape="xl" tone="onDark" className="ring-2 ring-electric" />}
-      name={name}
-      meta={[profile.positionTitle || "Position not set", profile.organizationName || "University not set"]}
+    <CoachHeroCard
+      coachName={name}
+      coachingPosition={profile.positionTitle}
+      assignedSport={profile.primarySport}
+      schoolName={profile.organizationName}
+      totalRosterCount={stats[0].value}
+      activeTrainedCount={stats[1].value}
+      pendingRequestsCount={stats[2].value}
       badge={
         <span className={cn(
           "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-white",
@@ -113,20 +115,7 @@ function ProfileOverview() {
           <v.icon className="h-3.5 w-3.5" /> {v.label}
         </span>
       }
-      tiles={[
-        { label: "Total Roster", value: String(stats[0].value), icon: Users },
-        { label: "Active Trained", value: String(stats[1].value), icon: Activity },
-        { label: "Pending Requests", value: String(stats[2].value), icon: UserCheck },
-      ]}
-      backdrop={<img src={court} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" width={1600} height={640} />}
-      footer={
-        <>
-          <p className="text-sm text-navy-muted">Team figures are sample data until athlete tracking is connected.</p>
-          <button type="button" onClick={() => comingSoon("Create Training Plan")} className={btn.primary}>
-            <Plus className="h-4 w-4" />Create Training Plan
-          </button>
-        </>
-      }
+      onCreateTrainingPlan={() => comingSoon("Create Training Plan")}
     />
   );
 }
