@@ -6,7 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { useAuth } from "@/auth/AuthContext";
 import { Page } from "@/components/Page";
 import { Link } from "@/router-compat";
-import { homePathFor } from "@/lib/roles";
+import { homePathFor, primaryRole } from "@/lib/roles";
 
 import Login from "@/pages/Login";
 import Signup from "@/pages/Signup";
@@ -44,6 +44,8 @@ const PROTECTED: { path: string; component: ComponentType }[] = [
 ];
 
 function NotFound() {
+  const { user } = useAuth();
+  const home = user ? homePathFor(user.roles) : "/dashboard";
   return (
     <Page title="Not found">
       <div className="flex min-h-[60vh] items-center justify-center px-4">
@@ -52,7 +54,7 @@ function NotFound() {
           <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
           <p className="mt-2 text-sm text-muted-foreground">This page doesn't exist or has been moved.</p>
           <div className="mt-6">
-            <Link to="/dashboard" direction="root" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
+            <Link to={home} direction="root" className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground">
               Go to dashboard
             </Link>
           </div>
@@ -82,7 +84,19 @@ function Shell() {
         <Route exact path="/login" render={() => (user ? <Redirect to={landing ?? homePathFor(user.roles)} /> : <Login />)} />
         <Route exact path="/signup" render={() => (user ? <Redirect to={landing ?? homePathFor(user.roles)} /> : <Signup />)} />
         {PROTECTED.map(({ path, component: C }) => (
-          <Route key={path} exact path={path} render={() => (user ? <C /> : <Redirect to={loginUrl} />)} />
+          <Route
+            key={path}
+            exact
+            path={path}
+            render={() => {
+              if (!user) return <Redirect to={loginUrl} />;
+              // Coaches have their own dashboard: never show them the athlete one, and vice versa.
+              const isCoach = primaryRole(user.roles) === "coach";
+              if (path === "/dashboard" && isCoach) return <Redirect to="/coach/dashboard" />;
+              if (path === "/coach/dashboard" && !isCoach) return <Redirect to={homePathFor(user.roles)} />;
+              return <C />;
+            }}
+          />
         ))}
         <Route exact path="/" render={() => <Redirect to={user ? homePathFor(user.roles) : "/login"} />} />
         <Route render={() => (user ? <NotFound /> : <Redirect to="/login" />)} />
