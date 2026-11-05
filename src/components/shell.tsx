@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { Bell, ChevronDown, Settings, type LucideIcon } from "lucide-react";
+import { Bell, ChevronDown, Search, Settings, type LucideIcon } from "lucide-react";
 import { Link } from "@/router-compat";
 import { PersonAvatar } from "@/components/avatar";
 import { cn } from "@/lib/utils";
@@ -135,6 +135,21 @@ export const DropdownDivider = () => <div className="my-1 h-px bg-border" />;
 export const DropdownLabel = ({ children }: { children: ReactNode }) => (
   <p className="px-3 pb-1 pt-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</p>
 );
+
+/** Search field in the bar (wide screens only). Same size and look for every role. */
+export function HeaderSearch({ placeholder }: { placeholder: string }) {
+  return (
+    <div className="relative ml-2 hidden max-w-xl flex-1 xl:block">
+      <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-shell-icon" />
+      <input
+        type="text"
+        placeholder={placeholder}
+        className="h-11 w-full rounded-full border border-white/15 bg-black/20 pl-12 pr-12 text-sm text-shell-fg outline-none placeholder:text-shell-muted focus:border-shell-focus focus:ring-4 focus:ring-shell-focus/20"
+      />
+      <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-shell-icon" />
+    </div>
+  );
+}
 
 /* ---- right-hand side of the bar ---- */
 
