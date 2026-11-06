@@ -13,6 +13,7 @@ import Signup from "@/pages/Signup";
 import CompleteProfile from "@/pages/CompleteProfile";
 import Dashboard from "@/pages/Dashboard";
 import CoachDashboard from "@/pages/CoachDashboard";
+import MyAthletes from "@/pages/MyAthletes";
 import CreateTrainingPlan from "@/pages/CreateTrainingPlan";
 import Profile from "@/pages/Profile";
 import Performance from "@/pages/Performance";
@@ -32,6 +33,7 @@ const PROTECTED: { path: string; component: ComponentType }[] = [
   { path: "/complete-profile", component: CompleteProfile },
   { path: "/dashboard", component: Dashboard },
   { path: "/coach/dashboard", component: CoachDashboard },
+  { path: "/coach/athletes", component: MyAthletes },
   // "new" starts a blank plan; any other value is the id of the plan to edit
   { path: "/coach/training-plans/:planId", component: CreateTrainingPlan },
   { path: "/profile", component: Profile },

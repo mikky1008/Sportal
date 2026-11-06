@@ -20,7 +20,7 @@ import {
  * (the `.coach-theme` tokens) are the coach's own. Every "home" link points at /coach/dashboard so
  * a coach is never sent to the athlete dashboard.
  *
- * Only Dashboard is a real screen so far. The other items have no route yet (on purpose),
+ * Only Dashboard, My Athletes and Training Plans are real screens so far. The other items have no route yet (on purpose),
  * so they show a "coming soon" message instead of navigating to a page that doesn't exist.
  */
 export const COACH_HOME = "/coach/dashboard";
@@ -35,7 +35,7 @@ interface NavEntry {
 
 const MAIN_NAV: NavEntry[] = [
   { label: "Dashboard", icon: LayoutDashboard, to: COACH_HOME },
-  { label: "My Athletes", icon: Users },
+  { label: "My Athletes", icon: Users, to: "/coach/athletes" },
   { label: "Athlete Discovery", icon: Compass },
 ];
 
