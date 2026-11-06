@@ -1,43 +1,37 @@
-import type { ReactNode } from "react";
 import { toast } from "sonner";
 import {
   BadgeCheck, Clock, Handshake, Inbox, MessageSquare,
-  Send, ShieldX, Star, UserCheck, UserPlus, Users, Activity, type LucideIcon,
+  Send, ShieldX, Star, UserCheck, UserPlus, Users, type LucideIcon,
 } from "lucide-react";
 import { CoachLayout } from "@/layouts/CoachLayout";
 import { useCoachProfile, type CoachVerificationStatus } from "@/lib/coachProfileStore";
 import { directoryAthletes } from "@/data/mock";
 import type { DirectoryAthlete } from "@/types";
 import { Card, Delta, EmptyState, Pill, ProgressBar, SectionLink, StatTile, btn } from "@/components/common";
-import { AthleteProfileCard } from "@/components/athlete-card";
+import { useAuth } from "@/auth/AuthContext";
+import { useCoachConnections, type CoachConnections } from "@/lib/useCoachConnections";
+import { AthleteSearchCard, ConnectionRequestsCard, MyAthletesCard } from "@/components/coach-connections";
 import { PersonAvatar } from "@/components/avatar";
 import { CoachHeroCard } from "@/components/coach-hero-card";
 import { CoachCompletionBanner } from "@/components/profile-completion-cards";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------------------------
-   COACH DASHBOARD (UI only)
+   COACH DASHBOARD
 
-   Real data: the coach's name, university, sport, position and verification status come from
-   the existing coach profile store.
-   Sample data: every number, list and athlete below is placeholder content (tagged "Sample data"
-   on screen). Nothing here reads from or writes to a backend. Each section has an empty state.
-   The profile has no photo field yet, so avatars show initials.
+   Live data: the coach's name, university, sport, position and verification badge come from the
+   coach profile store. Roster, pending and sent-request counts, the incoming/outgoing request
+   lists, My Athletes and athlete search come from the connections API (useCoachConnections).
+   Sample data: the Recruitment Overview and Team Performance Snapshot cards, and the three
+   non-connection rows of Pending Actions, are still placeholders and are tagged "Sample data".
 --------------------------------------------------------------------------------------------- */
 
 const comingSoon = (what: string) => toast(`${what} is coming soon`, { description: "This coach page hasn't been built yet." });
 
 /* ---- sample data ---- */
 
-const stats: { label: string; value: number; hint: string; icon: LucideIcon }[] = [
-  { label: "Total Athletes", value: 24, hint: "Under your team", icon: Users },
-  { label: "Active Athletes", value: 18, hint: "Trained in the last 14 days", icon: Activity },
-  { label: "Pending Requests", value: 5, hint: "Affiliation requests to review", icon: UserCheck },
-  { label: "Active Recruitment", value: 7, hint: "Open recruitment inquiries", icon: Handshake },
-];
-
+/** Pending Actions rows that don't have a backend yet. The connection-request row is live. */
 const pendingActions: { label: string; detail: string; count: number; icon: LucideIcon }[] = [
-  { label: "New affiliation requests", detail: "Athletes asking to join your team", count: 5, icon: UserCheck },
   { label: "Unanswered recruitment inquiries", detail: "Waiting for your reply", count: 3, icon: Inbox },
   { label: "Unread messages", detail: "From athletes and recruiters", count: 8, icon: MessageSquare },
   { label: "New athlete applications", detail: "Athletes showing interest in your program", count: 4, icon: UserPlus },
@@ -93,10 +87,16 @@ function SectionAction({ label, onClick }: { label: string; onClick: () => void 
 
 /* ---- sections ---- */
 
-function ProfileOverview() {
+const counts = (conn: CoachConnections) =>
+  conn.state === "ready"
+    ? { roster: conn.accepted.total, pending: conn.incoming.total, sent: conn.outgoing.total }
+    : { roster: null, pending: null, sent: null };
+
+function ProfileOverview({ conn }: { conn: CoachConnections }) {
   const { profile, verificationStatus } = useCoachProfile();
   const name = `${profile.firstName} ${profile.lastName}`.trim() || "Coach";
   const v = verification[verificationStatus];
+  const c = counts(conn);
 
   return (
     <CoachHeroCard
@@ -104,9 +104,10 @@ function ProfileOverview() {
       coachingPosition={profile.positionTitle}
       assignedSport={profile.primarySport}
       schoolName={profile.organizationName}
-      totalRosterCount={stats[0]?.value ?? 0}
-      activeTrainedCount={stats[1]?.value ?? 0}
-      pendingRequestsCount={stats[2]?.value ?? 0}
+      totalRosterCount={c.roster}
+      pendingRequestsCount={c.pending}
+      sentRequestsCount={c.sent}
+      footerNote="Roster and request counts come from your connections and update as you respond."
       badge={
         <span className={cn(
           "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold text-white",
@@ -120,85 +121,56 @@ function ProfileOverview() {
   );
 }
 
-function SummaryStats() {
+function SummaryStats({ conn }: { conn: CoachConnections }) {
+  const c = counts(conn);
+  const show = (n: number | null) => (n === null ? "—" : String(n));
   return (
-    <section aria-label="Team and athlete summary">
-      <div className="mb-2 flex justify-end"><SampleTag /></div>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {stats.map(({ label, value, hint, icon: Icon }) => (
-          <StatTile key={label} label={label} value={String(value)} icon={<Icon />} hint={<span className="text-muted-foreground">{hint}</span>} />
-        ))}
+    <section aria-label="Team and request summary">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <StatTile label="Total Athletes" value={show(c.roster)} icon={<Users />} hint={<span className="text-muted-foreground">Connected to you</span>} />
+        <StatTile label="Pending Requests" value={show(c.pending)} icon={<UserCheck />} hint={<span className="text-muted-foreground">Athlete requests to review</span>} />
+        <StatTile label="Sent Requests" value={show(c.sent)} icon={<Send />} hint={<span className="text-muted-foreground">Waiting for an athlete to answer</span>} />
       </div>
     </section>
   );
 }
 
-function MyAthletes({ sport }: { sport: string }) {
-  const athletes = directoryAthletes.filter((a) => a.sport === sport).slice(0, 3);
-  return (
-    <Card title="My Athletes" className="lg:col-span-2" action={<SectionAction label="View All" onClick={() => comingSoon("My Athletes")} />}>
-      {athletes.length === 0 ? (
-        <EmptyState message="No athletes yet. Athletes affiliated with your university and sport will appear here." />
-      ) : (
-        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-3">
-          {athletes.map((a) => (
-            <AthleteProfileCard key={a.id} athlete={a}
-              actions={<button type="button" onClick={() => comingSoon("Athlete profiles for coaches")} className={cn(btn.secondary, btn.sm, btn.block)}>View Profile</button>} />
-          ))}
-        </div>
-      )}
-    </Card>
-  );
-}
+function PendingActions({ conn }: { conn: CoachConnections }) {
+  const live = conn.state === "ready" ? conn.incoming.total : null;
+  const total = live ?? 0;
+  const goToRequests = () => document.getElementById("connection-requests")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const row = "flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring";
+  const iconBox = "grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground";
+  const badge = "grid h-7 min-w-7 place-items-center rounded-full bg-primary px-2 text-xs font-bold text-primary-foreground";
 
-function PendingActions() {
-  const total = pendingActions.reduce((n, a) => n + a.count, 0);
   return (
     <Card title="Pending Actions" action={total > 0 ? <Pill tone="warning">{total} need attention</Pill> : undefined}>
-      {total === 0 ? (
-        <EmptyState message="You're all caught up. Nothing needs your attention." />
-      ) : (
-        <ul className="flex flex-col gap-2">
-          {pendingActions.map(({ label, detail, count, icon: Icon }) => (
-            <li key={label}>
-              <button type="button" onClick={() => comingSoon(label)}
-                className="flex w-full items-center gap-3 rounded-2xl border bg-card p-3 text-left transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-accent text-accent-foreground"><Icon className="h-5 w-5" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold">{label}</span>
-                  <span className="block truncate text-xs text-muted-foreground">{detail}</span>
-                </span>
-                <span className="grid h-7 min-w-7 place-items-center rounded-full bg-primary px-2 text-xs font-bold text-primary-foreground">{count}</span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-function AthleteDiscovery({ sport }: { sport: string }) {
-  // Same sport, skipping the ones already shown under My Athletes.
-  const athletes = directoryAthletes.filter((a) => a.sport === sport && a.visible).slice(3, 7);
-  return (
-    <Card title="Athlete Discovery" action={<SectionAction label="Browse all" onClick={() => comingSoon("Athlete Discovery")} />}>
-      <p className="-mt-2 mb-4 text-sm text-muted-foreground">Recommended {sport} athletes you haven't contacted yet.</p>
-      {athletes.length === 0 ? (
-        <EmptyState message={`No recommended ${sport} athletes right now. Check back soon.`} />
-      ) : (
-        <div className="grid grid-cols-1 gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
-          {athletes.map((a) => (
-            <AthleteProfileCard key={a.id} athlete={a}
-              actions={
-                <>
-                  <button type="button" onClick={() => comingSoon("Athlete profiles for coaches")} className={cn(btn.secondary, btn.sm, btn.block)}>View Profile</button>
-                  <button type="button" onClick={() => comingSoon("Recruitment inquiries")} className={cn(btn.primary, btn.sm, btn.block)}><Send className="h-4 w-4" /> Send Inquiry</button>
-                </>
-              } />
-          ))}
-        </div>
-      )}
+      <ul className="flex flex-col gap-2">
+        <li>
+          <button type="button" onClick={goToRequests} className={row}>
+            <span className={iconBox}><UserCheck className="h-5 w-5" /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-semibold">New connection requests</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {conn.state === "error" ? "Couldn't load, open to retry" : "Athletes asking to connect with you"}
+              </span>
+            </span>
+            <span className={badge}>{live === null ? "—" : live}</span>
+          </button>
+        </li>
+        {pendingActions.map(({ label, detail, count, icon: Icon }) => (
+          <li key={label}>
+            <button type="button" onClick={() => comingSoon(label)} className={row}>
+              <span className={iconBox}><Icon className="h-5 w-5" /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold">{label}</span>
+                <span className="block truncate text-xs text-muted-foreground">{detail}</span>
+              </span>
+              <span className="flex items-center gap-2"><SampleTag /><span className={badge}>{count}</span></span>
+            </button>
+          </li>
+        ))}
+      </ul>
     </Card>
   );
 }
@@ -303,20 +275,24 @@ function PerformanceSnapshot() {
 /* ---- page ---- */
 
 function CoachDashboard() {
-  const { profile } = useCoachProfile();
-  // Sample athletes are matched to the coach's sport; fall back to Basketball until a sport is set.
-  const sport = profile.primarySport || "Basketball";
+  const conn = useCoachConnections();
+  const { user } = useAuth();
+  // The API only lets a verified coach send or accept requests; the permission comes with the session.
+  const canAct = !!user?.permissions.includes("sessions:verify");
 
   return (
     <div className="flex flex-col gap-6">
-      <ProfileOverview />
+      <ProfileOverview conn={conn} />
       <CoachCompletionBanner />
-      <SummaryStats />
+      <SummaryStats conn={conn} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <MyAthletes sport={sport} />
-        <PendingActions />
+        <MyAthletesCard conn={conn} />
+        <PendingActions conn={conn} />
       </div>
-      <AthleteDiscovery sport={sport} />
+      <div id="connection-requests" className="grid scroll-mt-4 grid-cols-1 gap-6 lg:grid-cols-2">
+        <ConnectionRequestsCard conn={conn} canAct={canAct} />
+        <AthleteSearchCard conn={conn} canAct={canAct} />
+      </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <RecruitmentOverview />
         <PerformanceSnapshot />
