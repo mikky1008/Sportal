@@ -3,7 +3,7 @@ import { useLocation } from "react-router-dom";
 import { IonContent, IonPage } from "@ionic/react";
 import { toast } from "sonner";
 import {
-  Building2, Compass, Handshake, LayoutDashboard, LogOut, MessageSquare, Settings, User, UserCheck, Users,
+  Building2, ClipboardList, Compass, Handshake, LayoutDashboard, LogOut, MessageSquare, Settings, User, UserCheck, Users,
   type LucideIcon,
 } from "lucide-react";
 import { Link } from "@/router-compat";
@@ -29,6 +29,8 @@ interface NavEntry {
   label: string;
   icon: LucideIcon;
   to?: string;
+  /** the entry counts as the current page for any path that starts with this */
+  activePrefix?: string;
 }
 
 const MAIN_NAV: NavEntry[] = [
@@ -38,6 +40,7 @@ const MAIN_NAV: NavEntry[] = [
 ];
 
 const MORE_NAV: NavEntry[] = [
+  { label: "Training Plans", icon: ClipboardList, to: "/coach/training-plans/new", activePrefix: "/coach/training-plans" },
   { label: "Affiliation Requests", icon: UserCheck },
   { label: "Recruitment", icon: Handshake },
   { label: "Messages", icon: MessageSquare },
@@ -106,12 +109,21 @@ function ProfileMenu({ name, shortName }: { name: string; shortName: string }) {
             <DropdownDivider />
           </div>
           {/* the former "More" items, on every screen size */}
-          {MORE_NAV.map((item) => (
-            <button key={item.label} type="button" role="menuitem" className={dropdownItemClass()} onClick={() => { setOpen(false); comingSoon(item.label); }}>
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </button>
-          ))}
+          {MORE_NAV.map((item) =>
+            item.to ? (
+              <Link key={item.label} to={item.to} role="menuitem" onClick={() => setOpen(false)}
+                aria-current={item.activePrefix && pathname.startsWith(item.activePrefix) ? "page" : undefined}
+                className={dropdownItemClass(!!item.activePrefix && pathname.startsWith(item.activePrefix))}>
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            ) : (
+              <button key={item.label} type="button" role="menuitem" className={dropdownItemClass()} onClick={() => { setOpen(false); comingSoon(item.label); }}>
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            ),
+          )}
           <DropdownDivider />
           <button type="button" role="menuitem" className={dropdownItemClass()} onClick={() => { setOpen(false); comingSoon("My Profile"); }}>
             <User className="h-4 w-4" />
