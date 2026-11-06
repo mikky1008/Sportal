@@ -215,6 +215,73 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_coach_athlete_connections_athlete ON coach_athlete_connections (athlete_id, status);
     `,
   },
+  {
+    version: 3,
+    name: "training_plans",
+    sql: `
+      -- A coach's training plan. DRAFT plans only need a title; a PUBLISHED plan must be complete
+      -- (the CHECK below), so the database itself refuses a half-finished published plan.
+      CREATE TABLE training_plans (
+        id           TEXT PRIMARY KEY,
+        coach_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        title        TEXT NOT NULL,
+        description  TEXT NOT NULL DEFAULT '',
+        sport        TEXT NOT NULL DEFAULT '',
+        skill_focus  TEXT NOT NULL DEFAULT '',
+        start_date   DATE,
+        end_date     DATE,
+        status       TEXT NOT NULL DEFAULT 'DRAFT',
+        published_at TIMESTAMPTZ,
+        created_at   TIMESTAMPTZ NOT NULL,
+        updated_at   TIMESTAMPTZ NOT NULL,
+        CONSTRAINT training_plans_status_check CHECK (status IN ('DRAFT', 'PUBLISHED')),
+        CONSTRAINT training_plans_title_check CHECK (length(btrim(title)) BETWEEN 1 AND 120),
+        CONSTRAINT training_plans_description_check CHECK (length(description) <= 1000),
+        CONSTRAINT training_plans_dates_check CHECK (start_date IS NULL OR end_date IS NULL OR end_date >= start_date),
+        CONSTRAINT training_plans_published_check CHECK (
+          status = 'DRAFT'
+          OR (published_at IS NOT NULL AND sport <> '' AND skill_focus <> '' AND start_date IS NOT NULL AND end_date IS NOT NULL)
+        )
+      );
+      CREATE INDEX idx_training_plans_coach ON training_plans (coach_id, status, updated_at DESC);
+
+      -- The weekly schedule: one row per drill, kept in the order the coach arranged them.
+      CREATE TABLE training_plan_schedule_items (
+        id               TEXT PRIMARY KEY,
+        plan_id          TEXT NOT NULL REFERENCES training_plans(id) ON DELETE CASCADE,
+        position         INTEGER NOT NULL,
+        day_of_week      TEXT NOT NULL,
+        drill_name       TEXT NOT NULL,
+        duration_minutes INTEGER NOT NULL,
+        intensity        TEXT NOT NULL,
+        CONSTRAINT training_plan_schedule_position_key UNIQUE (plan_id, position),
+        CONSTRAINT training_plan_schedule_day_check
+          CHECK (day_of_week IN ('Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')),
+        CONSTRAINT training_plan_schedule_drill_check CHECK (length(btrim(drill_name)) BETWEEN 1 AND 120),
+        CONSTRAINT training_plan_schedule_duration_check CHECK (duration_minutes BETWEEN 1 AND 600),
+        CONSTRAINT training_plan_schedule_intensity_check CHECK (intensity IN ('Low', 'Medium', 'High'))
+      );
+
+      CREATE TABLE training_plan_goals (
+        id          TEXT PRIMARY KEY,
+        plan_id     TEXT NOT NULL REFERENCES training_plans(id) ON DELETE CASCADE,
+        position    INTEGER NOT NULL,
+        description TEXT NOT NULL,
+        CONSTRAINT training_plan_goals_position_key UNIQUE (plan_id, position),
+        CONSTRAINT training_plan_goals_description_check CHECK (length(btrim(description)) BETWEEN 1 AND 200)
+      );
+
+      -- Which athletes a plan is assigned to. Whether the coach may assign them (an accepted
+      -- coach_athlete_connections row) is enforced by the API when the plan is saved.
+      CREATE TABLE training_plan_assignments (
+        plan_id     TEXT NOT NULL REFERENCES training_plans(id) ON DELETE CASCADE,
+        athlete_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        assigned_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (plan_id, athlete_id)
+      );
+      CREATE INDEX idx_training_plan_assignments_athlete ON training_plan_assignments (athlete_id);
+    `,
+  },
 ];
 
 const MIGRATION_LOCK_ID = 727_274_001;
