@@ -38,9 +38,14 @@ export async function clearSession(): Promise<void> {
   await Preferences.remove({ key: EXPIRES_KEY });
 }
 
-async function call(path: string, init: { method: "GET" | "POST"; body?: unknown; token?: string | null }): Promise<Response> {
+async function call(
+  path: string,
+  init: { method: "GET" | "POST"; body?: unknown; token?: string | null; signal?: AbortSignal },
+): Promise<Response> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15_000);
+  // A caller can cancel too (e.g. a search that was replaced by a newer one).
+  init.signal?.addEventListener("abort", () => ctrl.abort(), { once: true });
   try {
     return await fetch(`${API_URL}${path}`, {
       method: init.method,
@@ -103,5 +108,43 @@ export async function logout(): Promise<void> {
     // offline: the token is still removed from this device below
   } finally {
     await clearSession();
+  }
+}
+
+/** Result of a call made with the saved session: the parsed JSON, or why there isn't any. */
+export type ApiResult<T> =
+  | { ok: true; status: number; data: T }
+  | { ok: false; status: number; code: string; message: string };
+
+/**
+ * An authenticated JSON request for features that sit on top of the signed-in session (the
+ * coach-athlete connections, for one). It never throws: a missing/expired session, an unreachable
+ * server and an API error all come back as `{ ok: false, code, message }`.
+ */
+export async function apiRequest<T>(
+  path: string,
+  init: { method?: "GET" | "POST"; body?: unknown; signal?: AbortSignal } = {},
+): Promise<ApiResult<T>> {
+  const token = await getToken();
+  if (!token) return { ok: false, status: 401, code: "unauthenticated", message: "Your session has expired. Sign in again." };
+  try {
+    const res = await call(path, { method: init.method ?? "GET", token, ...(init.body !== undefined ? { body: init.body } : {}), ...(init.signal ? { signal: init.signal } : {}) });
+    let json: Record<string, unknown> | null = null;
+    try {
+      json = (await res.json()) as Record<string, unknown>;
+    } catch {
+      json = null;
+    }
+    if (res.status === 401) {
+      await clearSession();
+      return { ok: false, status: 401, code: "unauthenticated", message: "Your session has expired. Sign in again." };
+    }
+    if (res.ok && json && json["ok"] !== false) return { ok: true, status: res.status, data: json as T };
+    const code = typeof json?.["code"] === "string" ? (json["code"] as string) : typeof json?.["error"] === "string" ? (json["error"] as string) : "server_error";
+    const message = typeof json?.["message"] === "string" ? (json["message"] as string) : "Something went wrong. Please try again.";
+    return { ok: false, status: res.status, code, message };
+  } catch (err) {
+    if (init.signal?.aborted) return { ok: false, status: 0, code: "aborted", message: "Request cancelled." };
+    return { ok: false, status: 0, code: "network", message: NETWORK_MESSAGE };
   }
 }
