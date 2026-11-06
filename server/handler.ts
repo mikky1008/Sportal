@@ -7,6 +7,18 @@
 //   POST /api/auth/logout     Authorization: Bearer <token>       -> { ok }
 //   GET  /api/health
 //
+// Coach-athlete connections (every route needs `Authorization: Bearer <token>` and a coach or
+// student-athlete account; a coach must also be verified to send or accept a request):
+//   POST /api/connections/requests                 { userId }  -> 201 { ok, connection }   send a request
+//   GET  /api/connections/requests/incoming        ?limit&offset -> { ok, items, total }   sent to me
+//   GET  /api/connections/requests/outgoing        ?limit&offset -> { ok, items, total }   sent by me
+//   POST /api/connections/requests/:id/accept      -> { ok, connection }                   recipient only
+//   POST /api/connections/requests/:id/decline     -> { ok, connection }                   recipient only
+//   POST /api/connections/requests/:id/cancel      -> { ok, connection }                   sender only
+//   GET  /api/connections                          ?limit&offset -> { ok, items, total }   accepted connections
+//   POST /api/connections/:id/disconnect           -> { ok, connection }                   either side
+// Failures are { ok: false, code, message } with a matching HTTP status (401, 403, 404, 409, 422).
+//
 // The session token is returned in the JSON body and sent back as an `Authorization: Bearer`
 // header (a native app has no browser cookie jar). Only a SHA-256 hash of it is stored.
 
@@ -22,6 +34,17 @@ import {
   UserInputError,
   type RequestMeta,
 } from "./auth.server.ts";
+import {
+  cancelRequest,
+  ConnectionError,
+  disconnect,
+  listConnections,
+  PAGE_DEFAULT,
+  PAGE_MAX,
+  respondToRequest,
+  sendRequest,
+  type ListKind,
+} from "./connections.server.ts";
 
 const TRUST_PROXY = process.env["TRUST_PROXY"] === "true" || !!process.env["VERCEL"];
 const MAX_BODY_BYTES = 16 * 1024;
@@ -174,6 +197,76 @@ async function handleRegister(req: Request): Promise<Response> {
   }
 }
 
+const sendRequestSchema = z.object({
+  userId: z.string({ required_error: "Choose who to connect with." }).trim().uuid("Choose who to connect with."),
+});
+
+/** ?limit and ?offset for the list endpoints; anything invalid falls back to the defaults. */
+function pagingFrom(req: Request): { limit: number; offset: number } {
+  const params = new URL(req.url).searchParams;
+  const limit = Number(params.get("limit") ?? PAGE_DEFAULT);
+  const offset = Number(params.get("offset") ?? 0);
+  return {
+    limit: Number.isInteger(limit) && limit >= 1 ? Math.min(limit, PAGE_MAX) : PAGE_DEFAULT,
+    offset: Number.isInteger(offset) && offset >= 0 ? offset : 0,
+  };
+}
+
+/** Returns null when the path is not a connections route, so the caller can keep matching. */
+async function handleConnections(req: Request, path: string): Promise<Response | null> {
+  if (path !== "/api/connections" && !path.startsWith("/api/connections/")) return null;
+  const get = req.method === "GET";
+  const post = req.method === "POST";
+
+  const listKind: ListKind | null =
+    get && path === "/api/connections" ? "accepted"
+    : get && path === "/api/connections/requests/incoming" ? "incoming"
+    : get && path === "/api/connections/requests/outgoing" ? "outgoing"
+    : null;
+  const isSend = post && path === "/api/connections/requests";
+  const answer = post ? /^\/api\/connections\/requests\/([^/]+)\/(accept|decline|cancel)$/.exec(path) : null;
+  const leave = post ? /^\/api\/connections\/([^/]+)\/disconnect$/.exec(path) : null;
+  if (!listKind && !isSend && !answer && !leave) return null;
+
+  // Authentication comes first: nothing below runs, and no body is read, for an anonymous caller.
+  const user = await getUserBySessionToken(bearer(req));
+  if (!user) return send(req, 401, { ok: false, code: "unauthenticated", message: "Sign in to continue." });
+
+  const meta = requestMeta(req);
+  try {
+    if (listKind) return send(req, 200, { ok: true, ...(await listConnections(user, listKind, pagingFrom(req))) });
+
+    if (isSend) {
+      const parsed = sendRequestSchema.safeParse(await readJson(req));
+      if (!parsed.success)
+        return send(req, 400, {
+          ok: false,
+          code: "validation",
+          message: "Please fix the highlighted fields.",
+          fieldErrors: { userId: parsed.error.flatten().fieldErrors.userId?.[0] ?? "Choose who to connect with." },
+        });
+      const result = await sendRequest(user, parsed.data.userId, meta);
+      return send(req, 201, { ok: true, connection: result.connection });
+    }
+
+    if (answer) {
+      const id = answer[1] ?? "";
+      const action = answer[2];
+      const connection =
+        action === "accept" ? await respondToRequest(user, id, "accepted", meta)
+        : action === "decline" ? await respondToRequest(user, id, "declined", meta)
+        : await cancelRequest(user, id, meta);
+      return send(req, 200, { ok: true, connection });
+    }
+
+    return send(req, 200, { ok: true, connection: await disconnect(user, leave?.[1] ?? "", meta) });
+  } catch (err) {
+    if (err instanceof ConnectionError)
+      return send(req, err.httpStatus, { ok: false, code: err.code, message: err.message, ...err.extra });
+    throw err;
+  }
+}
+
 export async function handle(req: Request): Promise<Response> {
   try {
     const path = new URL(req.url).pathname.replace(/\/+$/, "") || "/";
@@ -190,6 +283,8 @@ export async function handle(req: Request): Promise<Response> {
       await destroySession(bearer(req), requestMeta(req));
       return send(req, 200, { ok: true });
     }
+    const connections = await handleConnections(req, path);
+    if (connections) return connections;
     return send(req, 404, { error: "not_found" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
