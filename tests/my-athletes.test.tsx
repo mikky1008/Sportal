@@ -25,32 +25,24 @@ describe("list", () => {
   });
 });
 
-describe("search and filter", () => {
+describe("search", () => {
   it("search by name is case-insensitive", async () => {
     render(<MyAthletes />);
     await userEvent.type(screen.getByLabelText("Search athletes by name"), "kEVIN");
     expect(cards()).toHaveLength(1);
     expect(within(cards()[0]!).getByText("Kevin Ramos")).toBeTruthy();
   });
-  it("filters by sport", async () => {
+  it("has no sport filter", () => {
     render(<MyAthletes />);
-    await userEvent.selectOptions(screen.getByLabelText("Filter by sport"), "Basketball");
-    expect(cards()).toHaveLength(2);
+    expect(screen.queryByLabelText("Filter by sport")).toBeNull();
   });
-  it("search and sport filter combine", async () => {
-    render(<MyAthletes />);
-    await userEvent.selectOptions(screen.getByLabelText("Filter by sport"), "Basketball");
-    await userEvent.type(screen.getByLabelText("Search athletes by name"), "marco");
-    expect(screen.getByText("No Connected Athletes Found")).toBeTruthy();
-  });
-  it("shows the no-results state and Reset Filters restores the list", async () => {
+  it("shows the no-results state and Clear Search restores the list", async () => {
     render(<MyAthletes />);
     await userEvent.type(screen.getByLabelText("Search athletes by name"), "zzzz");
     expect(screen.getByText("No Connected Athletes Found")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Reset Filters" }));
+    await userEvent.click(screen.getByRole("button", { name: "Clear Search" }));
     expect(cards()).toHaveLength(4);
     expect((screen.getByLabelText("Search athletes by name") as HTMLInputElement).value).toBe("");
-    expect((screen.getByLabelText("Filter by sport") as HTMLSelectElement).value).toBe("all");
   });
 });
 
