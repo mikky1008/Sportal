@@ -14,6 +14,7 @@
 //    can cancel it; either side of an accepted connection can disconnect.
 //  - A pair can never hold two live requests: a second request, from either side, is a conflict.
 //  - Every state change is one conditional UPDATE, so two racing requests cannot both win.
+//  - Athlete search is for VERIFIED coaches only and returns ids and names, never email addresses.
 
 import { randomUUID } from "node:crypto";
 import { getDb, type Db } from "./db.server.ts";
@@ -32,6 +33,11 @@ export const COACH_VERIFIED_PERMISSION = "sessions:verify";
 
 export const PAGE_DEFAULT = 50;
 export const PAGE_MAX = 100;
+
+export const SEARCH_MIN_CHARS = 2;
+export const SEARCH_MAX_CHARS = 80;
+export const SEARCH_LIMIT_DEFAULT = 10;
+export const SEARCH_LIMIT_MAX = 20;
 
 export type ConnectionStatus = "pending" | "accepted" | "declined" | "cancelled" | "disconnected";
 export type ListKind = "incoming" | "outgoing" | "accepted";
@@ -264,6 +270,77 @@ export async function listConnections(
     JOIN users u ON u.id = CASE WHEN c.coach_id = ${me} THEN c.athlete_id ELSE c.coach_id END
     ${where}`;
   return { items: rows.map((r) => toView(r, me)), total: count?.n ?? 0, limit, offset };
+}
+
+// ---------- athlete search ----------
+
+/** What a coach may learn about an athlete before connecting: an id and a name, nothing else. */
+export interface AthleteSearchResult {
+  id: string;
+  displayName: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/** Escapes LIKE wildcards so "50%" or "a_b" is matched literally rather than as a pattern. */
+function likeLiteral(text: string): string {
+  return text.replace(/[\\%_]/g, (c) => `\\${c}`);
+}
+
+/**
+ * Lets a VERIFIED coach find active student-athletes by name. Every word typed must match the
+ * start of the display name, first name or last name. Email and username are never searched and
+ * never returned. Athletes who are inactive or deleted are left out. A short or empty query
+ * returns an empty list instead of the whole athlete table.
+ */
+export async function searchAthletes(
+  actor: PublicUser,
+  rawQuery: string,
+  rawLimit: number = SEARCH_LIMIT_DEFAULT,
+  meta: Partial<RequestMeta> = {},
+  dbArg?: Db,
+): Promise<{ items: AthleteSearchResult[] }> {
+  if (!hasRole(actor, COACH_ROLE))
+    throw new ConnectionError(403, "role_not_allowed", "Only coaches can search for athletes.");
+  const db = dbArg ?? (await getDb());
+  await assertCoachVerified(db, actor.id, true);
+
+  const words = rawQuery.trim().slice(0, SEARCH_MAX_CHARS).split(/\s+/).filter(Boolean).slice(0, 4);
+  if (words.join(" ").length < SEARCH_MIN_CHARS) return { items: [] };
+  const limit = Math.min(Math.max(Math.trunc(Number.isFinite(rawLimit) ? rawLimit : SEARCH_LIMIT_DEFAULT), 1), SEARCH_LIMIT_MAX);
+
+  // One condition per word, all of which must hold (AND).
+  let nameMatch = db`TRUE`;
+  for (const w of words) {
+    const prefix = `${likeLiteral(w)}%`;
+    const inner = `% ${likeLiteral(w)}%`;
+    nameMatch = db`${nameMatch} AND (
+      u.display_name ILIKE ${prefix} OR u.display_name ILIKE ${inner}
+      OR up.first_name ILIKE ${prefix} OR up.last_name ILIKE ${prefix})`;
+  }
+
+  const rows = await db<{ id: string; display_name: string; first_name: string | null; last_name: string | null }[]>`
+    SELECT u.id, u.display_name, up.first_name, up.last_name
+    FROM users u
+    LEFT JOIN user_profiles up ON up.user_id = u.id
+    WHERE u.is_active = TRUE AND u.deleted_at IS NULL AND u.id <> ${actor.id}
+      AND EXISTS (
+        SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
+        WHERE ur.user_id = u.id AND r.name = ${ATHLETE_ROLE})
+      AND ${nameMatch}
+    ORDER BY u.display_name, u.id
+    LIMIT ${limit}`;
+
+  await audit("athlete.searched", { userId: actor.id, ...meta, detail: { queryLength: words.join(" ").length, results: rows.length } }, db);
+
+  return {
+    items: rows.map((r) => ({
+      id: r.id,
+      displayName: r.display_name,
+      ...(r.first_name?.trim() ? { firstName: r.first_name.trim() } : {}),
+      ...(r.last_name?.trim() ? { lastName: r.last_name.trim() } : {}),
+    })),
+  };
 }
 
 // ---------- sending ----------
