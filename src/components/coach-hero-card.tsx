@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Plus, Mail, Users, Zap } from "lucide-react";
+import { Plus, Mail, Send, Users, Zap } from "lucide-react";
 import { PersonAvatar } from "@/components/avatar";
 import { ProfileHero } from "@/components/profile-hero";
 import { btn } from "@/components/common";
@@ -10,14 +10,21 @@ export interface CoachHeroCardProps {
   coachingPosition: string;
   assignedSport: string;
   schoolName: string;
-  totalRosterCount: number;
-  activeTrainedCount: number;
-  pendingRequestsCount: number;
+  /** a number, or null while the real count is still loading (shown as "—") */
+  totalRosterCount: number | null;
+  pendingRequestsCount: number | null;
+  /** Real "requests I sent" count. When given, it replaces the "Active Trained" tile. */
+  sentRequestsCount?: number | null;
+  /** Sample figure for the "Active Trained" tile; only used when `sentRequestsCount` is not given. */
+  activeTrainedCount?: number;
+  /** Replaces the default footer sentence (the default says the figures are sample data). */
+  footerNote?: string;
   /** optional verification badge shown under the organization */
   badge?: ReactNode;
   onCreateTrainingPlan: () => void;
 }
 
+const count = (n: number | null) => (n === null ? "—" : String(n));
 const FOOTER_NOTE = "Roster updates reflect real-time team activity. Figures shown are sample data for now.";
 
 /**
@@ -27,7 +34,7 @@ const FOOTER_NOTE = "Roster updates reflect real-time team activity. Figures sho
  */
 export function CoachHeroCard({
   coachName, coachingPosition, assignedSport, schoolName,
-  totalRosterCount, activeTrainedCount, pendingRequestsCount, badge, onCreateTrainingPlan,
+  totalRosterCount, activeTrainedCount = 0, pendingRequestsCount, sentRequestsCount, footerNote, badge, onCreateTrainingPlan,
 }: CoachHeroCardProps) {
   const title = [coachingPosition, assignedSport].filter(Boolean).join(" • ") || "Position not set";
   return (
@@ -38,14 +45,16 @@ export function CoachHeroCard({
       meta={[title, schoolName || "University not set"]}
       badge={badge}
       tiles={[
-        { label: "Total Roster", value: String(totalRosterCount), icon: Users },
-        { label: "Active Trained", value: String(activeTrainedCount), icon: Zap },
-        { label: "Pending Req", value: String(pendingRequestsCount), icon: Mail },
+        { label: "Total Roster", value: count(totalRosterCount), icon: Users },
+        sentRequestsCount === undefined
+          ? { label: "Active Trained", value: String(activeTrainedCount), icon: Zap }
+          : { label: "Sent Req", value: count(sentRequestsCount), icon: Send },
+        { label: "Pending Req", value: count(pendingRequestsCount), icon: Mail },
       ]}
       backdrop={<img src={court} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30" width={1600} height={640} />}
       footer={
         <>
-          <p className="text-sm text-navy-muted">{FOOTER_NOTE}</p>
+          <p className="text-sm text-navy-muted">{footerNote ?? FOOTER_NOTE}</p>
           <button type="button" onClick={onCreateTrainingPlan} className={btn.primary}>
             <Plus className="h-4 w-4" aria-hidden="true" />
             Create Training Plan
