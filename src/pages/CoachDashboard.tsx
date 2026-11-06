@@ -9,6 +9,7 @@ import { directoryAthletes } from "@/data/mock";
 import type { DirectoryAthlete } from "@/types";
 import { Card, Delta, EmptyState, Pill, ProgressBar, SectionLink, StatTile, btn } from "@/components/common";
 import { useAuth } from "@/auth/AuthContext";
+import { useNavigate } from "@/router-compat";
 import { useCoachConnections, type CoachConnections } from "@/lib/useCoachConnections";
 import { AthleteSearchCard, ConnectionRequestsCard, MyAthletesCard } from "@/components/coach-connections";
 import { PersonAvatar } from "@/components/avatar";
@@ -97,6 +98,7 @@ function ProfileOverview({ conn }: { conn: CoachConnections }) {
   const name = `${profile.firstName} ${profile.lastName}`.trim() || "Coach";
   const v = verification[verificationStatus];
   const c = counts(conn);
+  const navigate = useNavigate();
 
   return (
     <CoachHeroCard
@@ -116,7 +118,7 @@ function ProfileOverview({ conn }: { conn: CoachConnections }) {
           <v.icon className="h-3.5 w-3.5" /> {v.label}
         </span>
       }
-      onCreateTrainingPlan={() => comingSoon("Create Training Plan")}
+      onCreateTrainingPlan={() => navigate({ to: "/coach/training-plans/new" })}
     />
   );
 }
