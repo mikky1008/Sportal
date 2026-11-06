@@ -19,6 +19,16 @@
 //   POST /api/connections/:id/disconnect           -> { ok, connection }                   either side
 // Failures are { ok: false, code, message } with a matching HTTP status (401, 403, 404, 409, 422).
 //
+// Training plans (coach accounts only; a coach sees and changes only their own plans):
+//   POST /api/training-plans                { status: DRAFT|PUBLISHED, title, description, sport, skillFocus,
+//                                             startDate, endDate, schedule[], goals[], athleteIds[] }
+//                                                                  -> 201 { ok, plan }
+//   PUT  /api/training-plans/:id            same body (full replace)  -> { ok, plan }
+//   GET  /api/training-plans                ?status&limit&offset      -> { ok, items, total }
+//   GET  /api/training-plans/:id                                      -> { ok, plan }
+// Athletes in `athleteIds` must have an accepted connection with the coach (403 athlete_not_connected).
+// Validation failures are 400 { ok: false, code: "validation", message, fieldErrors }.
+//
 // The session token is returned in the JSON body and sent back as an `Authorization: Bearer`
 // header (a native app has no browser cookie jar). Only a SHA-256 hash of it is stored.
 
@@ -45,6 +55,8 @@ import {
   sendRequest,
   type ListKind,
 } from "./connections.server.ts";
+import { createPlan, getPlan, listPlans, PlanError, updatePlan } from "./training-plans.server.ts";
+import { PLAN_STATUSES, type PlanStatus } from "../src/lib/trainingPlanRules.ts";
 
 const TRUST_PROXY = process.env["TRUST_PROXY"] === "true" || !!process.env["VERCEL"];
 const MAX_BODY_BYTES = 16 * 1024;
@@ -98,7 +110,7 @@ function send(req: Request, status: number, body: unknown): Response {
   if (origin && ALLOWED_ORIGINS.has(origin)) {
     headers.set("access-control-allow-origin", origin);
     headers.set("access-control-allow-headers", "authorization, content-type");
-    headers.set("access-control-allow-methods", "GET, POST, OPTIONS");
+    headers.set("access-control-allow-methods", "GET, POST, PUT, OPTIONS");
     headers.set("access-control-max-age", "600");
   }
   return new Response(status === 204 ? null : JSON.stringify(body), { status, headers });
@@ -267,6 +279,41 @@ async function handleConnections(req: Request, path: string): Promise<Response |
   }
 }
 
+/** Returns null when the path is not a training-plans route, so the caller can keep matching. */
+async function handleTrainingPlans(req: Request, path: string): Promise<Response | null> {
+  if (path !== "/api/training-plans" && !path.startsWith("/api/training-plans/")) return null;
+  const m = /^\/api\/training-plans(?:\/([^/]+))?$/.exec(path);
+  if (!m) return null;
+  const id = m[1];
+  const isList = req.method === "GET" && !id;
+  const isGet = req.method === "GET" && !!id;
+  const isCreate = req.method === "POST" && !id;
+  const isUpdate = req.method === "PUT" && !!id;
+  if (!isList && !isGet && !isCreate && !isUpdate) return null;
+
+  // Authentication comes first: nothing below runs, and no body is read, for an anonymous caller.
+  const user = await getUserBySessionToken(bearer(req));
+  if (!user) return send(req, 401, { ok: false, code: "unauthenticated", message: "Sign in to continue." });
+
+  const meta = requestMeta(req);
+  try {
+    if (isList) {
+      const status = new URL(req.url).searchParams.get("status");
+      if (status !== null && !(PLAN_STATUSES as readonly string[]).includes(status))
+        return send(req, 400, { ok: false, code: "validation", message: "status must be DRAFT or PUBLISHED." });
+      const paging = pagingFrom(req);
+      return send(req, 200, { ok: true, ...(await listPlans(user, { ...paging, ...(status ? { status: status as PlanStatus } : {}) })) });
+    }
+    if (isGet) return send(req, 200, { ok: true, plan: await getPlan(user, id ?? "") });
+    const body = await readJson(req);
+    if (isCreate) return send(req, 201, { ok: true, plan: await createPlan(user, body, meta) });
+    return send(req, 200, { ok: true, plan: await updatePlan(user, id ?? "", body, meta) });
+  } catch (err) {
+    if (err instanceof PlanError) return send(req, err.httpStatus, { ok: false, code: err.code, message: err.message, ...err.extra });
+    throw err;
+  }
+}
+
 export async function handle(req: Request): Promise<Response> {
   try {
     const path = new URL(req.url).pathname.replace(/\/+$/, "") || "/";
@@ -285,6 +332,8 @@ export async function handle(req: Request): Promise<Response> {
     }
     const connections = await handleConnections(req, path);
     if (connections) return connections;
+    const plans = await handleTrainingPlans(req, path);
+    if (plans) return plans;
     return send(req, 404, { error: "not_found" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
