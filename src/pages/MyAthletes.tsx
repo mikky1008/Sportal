@@ -3,17 +3,16 @@ import { Eye, Search, UserRound } from "lucide-react";
 import { CoachLayout } from "@/layouts/CoachLayout";
 import { PersonAvatar } from "@/components/avatar";
 import { AthleteDetailDialog } from "@/components/athlete-detail-dialog";
-import { PageHeader, Pill, Select, btn } from "@/components/common";
+import { PageHeader, Pill, btn } from "@/components/common";
 import { connectedAthletes, type ConnectedAthlete } from "@/data/coachAthletes";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------------------------
    COACH: MY ATHLETES
-   Frontend only. The list comes from data/coachAthletes.ts (mock data). Search is by name, the
-   sport filter is built from the sports in the list, and "View Athlete Profile" opens a popup.
+   Frontend only. The list comes from data/coachAthletes.ts (mock data). Search is by name, and
+   "View Athlete Profile" opens a popup.
 --------------------------------------------------------------------------------------------- */
 
-const ALL_SPORTS = "all";
 const field = "h-11 w-full rounded-xl border bg-background pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring";
 
 const fullName = (a: ConnectedAthlete) => `${a.firstName} ${a.lastName}`;
@@ -53,7 +52,7 @@ function NoResults({ onReset }: { onReset: () => void }) {
       <span className="grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground"><UserRound className="h-6 w-6" aria-hidden="true" /></span>
       <h2 className="text-lg font-bold">No Connected Athletes Found</h2>
       <p className="max-w-md text-sm text-muted-foreground">We couldn't find any connected athletes matching your current search criteria.</p>
-      <button type="button" onClick={onReset} className={cn(btn.secondary, btn.sm, "mt-2")}>Reset Filters</button>
+      <button type="button" onClick={onReset} className={cn(btn.secondary, btn.sm, "mt-2")}>Clear Search</button>
     </div>
   );
 }
@@ -71,17 +70,15 @@ function NoConnections() {
 /** The screen itself. `athletes` defaults to the mock list; pass [] to see the empty state. */
 export function MyAthletes({ athletes = connectedAthletes }: { athletes?: ConnectedAthlete[] }) {
   const [query, setQuery] = useState("");
-  const [sport, setSport] = useState(ALL_SPORTS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const sportOptions = useMemo(() => [...new Set(athletes.map((a) => a.sport))].sort(), [athletes]);
   const term = query.trim().toLowerCase();
   const visible = useMemo(
-    () => athletes.filter((a) => (sport === ALL_SPORTS || a.sport === sport) && (term === "" || fullName(a).toLowerCase().includes(term))),
-    [athletes, sport, term],
+    () => athletes.filter((a) => term === "" || fullName(a).toLowerCase().includes(term)),
+    [athletes, term],
   );
   const selected = athletes.find((a) => a.id === selectedId) ?? null;
-  const reset = () => { setQuery(""); setSport(ALL_SPORTS); };
+  const reset = () => setQuery("");
   const total = athletes.length;
 
   return (
@@ -102,13 +99,6 @@ export function MyAthletes({ athletes = connectedAthletes }: { athletes?: Connec
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} maxLength={80}
                 placeholder="Search athlete by name..." aria-label="Search athletes by name" className={field} />
             </div>
-            <label className="flex items-center gap-2 text-sm font-medium">
-              <span className="whitespace-nowrap">Filter by Sport:</span>
-              <Select value={sport} onChange={(e) => setSport(e.target.value)} aria-label="Filter by sport" wrapperClassName="min-w-40">
-                <option value={ALL_SPORTS}>All Sports</option>
-                {sportOptions.map((s) => <option key={s} value={s}>{s}</option>)}
-              </Select>
-            </label>
           </div>
 
           {visible.length === 0 ? (
