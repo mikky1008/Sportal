@@ -40,7 +40,7 @@ export async function clearSession(): Promise<void> {
 
 async function call(
   path: string,
-  init: { method: "GET" | "POST"; body?: unknown; token?: string | null; signal?: AbortSignal },
+  init: { method: "GET" | "POST" | "PUT"; body?: unknown; token?: string | null; signal?: AbortSignal },
 ): Promise<Response> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 15_000);
@@ -114,7 +114,7 @@ export async function logout(): Promise<void> {
 /** Result of a call made with the saved session: the parsed JSON, or why there isn't any. */
 export type ApiResult<T> =
   | { ok: true; status: number; data: T }
-  | { ok: false; status: number; code: string; message: string };
+  | { ok: false; status: number; code: string; message: string; fieldErrors?: Record<string, string> };
 
 /**
  * An authenticated JSON request for features that sit on top of the signed-in session (the
@@ -123,7 +123,7 @@ export type ApiResult<T> =
  */
 export async function apiRequest<T>(
   path: string,
-  init: { method?: "GET" | "POST"; body?: unknown; signal?: AbortSignal } = {},
+  init: { method?: "GET" | "POST" | "PUT"; body?: unknown; signal?: AbortSignal } = {},
 ): Promise<ApiResult<T>> {
   const token = await getToken();
   if (!token) return { ok: false, status: 401, code: "unauthenticated", message: "Your session has expired. Sign in again." };
@@ -142,7 +142,9 @@ export async function apiRequest<T>(
     if (res.ok && json && json["ok"] !== false) return { ok: true, status: res.status, data: json as T };
     const code = typeof json?.["code"] === "string" ? (json["code"] as string) : typeof json?.["error"] === "string" ? (json["error"] as string) : "server_error";
     const message = typeof json?.["message"] === "string" ? (json["message"] as string) : "Something went wrong. Please try again.";
-    return { ok: false, status: res.status, code, message };
+    const fe = json?.["fieldErrors"];
+    const fieldErrors = fe && typeof fe === "object" ? (fe as Record<string, string>) : undefined;
+    return { ok: false, status: res.status, code, message, ...(fieldErrors ? { fieldErrors } : {}) };
   } catch (err) {
     if (init.signal?.aborted) return { ok: false, status: 0, code: "aborted", message: "Request cancelled." };
     return { ok: false, status: 0, code: "network", message: NETWORK_MESSAGE };
