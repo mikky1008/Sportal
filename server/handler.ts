@@ -19,6 +19,10 @@
 //   POST /api/connections/:id/disconnect           -> { ok, connection }                   either side
 // Failures are { ok: false, code, message } with a matching HTTP status (401, 403, 404, 409, 422).
 //
+// Athlete search (verified coaches only; returns ids and names, never emails):
+//   GET  /api/athletes/search                      ?q&limit    -> { ok, items: [{ id, displayName, firstName?, lastName? }] }
+//                                                  q needs 2+ characters (shorter gives an empty list); limit 1-20, default 10.
+//
 // Training plans (coach accounts only; a coach sees and changes only their own plans):
 //   POST /api/training-plans                { status: DRAFT|PUBLISHED, title, description, sport, skillFocus,
 //                                             startDate, endDate, schedule[], goals[], athleteIds[] }
@@ -52,6 +56,9 @@ import {
   PAGE_DEFAULT,
   PAGE_MAX,
   respondToRequest,
+  searchAthletes,
+  SEARCH_LIMIT_DEFAULT,
+  SEARCH_MAX_CHARS,
   sendRequest,
   type ListKind,
 } from "./connections.server.ts";
@@ -279,6 +286,28 @@ async function handleConnections(req: Request, path: string): Promise<Response |
   }
 }
 
+/** Returns null when the path is not the athlete search route, so the caller can keep matching. */
+async function handleAthleteSearch(req: Request, path: string): Promise<Response | null> {
+  if (req.method !== "GET" || path !== "/api/athletes/search") return null;
+
+  // Authentication comes first: nothing below runs for an anonymous caller.
+  const user = await getUserBySessionToken(bearer(req));
+  if (!user) return send(req, 401, { ok: false, code: "unauthenticated", message: "Sign in to continue." });
+
+  const params = new URL(req.url).searchParams;
+  const q = params.get("q") ?? "";
+  if (q.length > SEARCH_MAX_CHARS * 2)
+    return send(req, 400, { ok: false, code: "validation", message: "Search text is too long." });
+  const limit = Number(params.get("limit") ?? SEARCH_LIMIT_DEFAULT);
+  try {
+    return send(req, 200, { ok: true, ...(await searchAthletes(user, q, limit, requestMeta(req))) });
+  } catch (err) {
+    if (err instanceof ConnectionError)
+      return send(req, err.httpStatus, { ok: false, code: err.code, message: err.message, ...err.extra });
+    throw err;
+  }
+}
+
 /** Returns null when the path is not a training-plans route, so the caller can keep matching. */
 async function handleTrainingPlans(req: Request, path: string): Promise<Response | null> {
   if (path !== "/api/training-plans" && !path.startsWith("/api/training-plans/")) return null;
@@ -332,6 +361,8 @@ export async function handle(req: Request): Promise<Response> {
     }
     const connections = await handleConnections(req, path);
     if (connections) return connections;
+    const athletes = await handleAthleteSearch(req, path);
+    if (athletes) return athletes;
     const plans = await handleTrainingPlans(req, path);
     if (plans) return plans;
     return send(req, 404, { error: "not_found" });
