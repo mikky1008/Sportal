@@ -299,3 +299,106 @@ export async function updatePlan(actor: PublicUser, id: string, raw: unknown, me
   );
   return viewById(db, id, actor.id);
 }
+
+// ---------- the athlete's side: plans assigned to me ----------
+
+/** What an athlete sees of a plan: no other athletes, no draft state, no coach internals. */
+export interface AssignedPlanSummary {
+  id: string;
+  title: string;
+  sport: string;
+  skillFocus: string;
+  startDate: string | null;
+  endDate: string | null;
+  coach: { id: string; displayName: string };
+  assignedAt: string;
+}
+
+export interface AssignedPlanView extends AssignedPlanSummary {
+  description: string;
+  schedule: { day: string; drillName: string; durationMinutes: number; intensity: string }[];
+  goals: string[];
+  publishedAt: string | null;
+}
+
+function requireAthlete(user: PublicUser): void {
+  if (!user.roles.includes(ATHLETE_ROLE))
+    throw new PlanError(403, "role_not_allowed", "Only student-athletes have assigned training plans.");
+}
+
+/**
+ * Plans an athlete may see: PUBLISHED, assigned to them, and from a coach they are still connected
+ * to (accepted). Disconnecting from a coach hides that coach's plans; reconnecting shows them again.
+ */
+const ASSIGNED_WHERE = (db: Db, me: string) => db`
+  a.athlete_id = ${me} AND p.status = 'PUBLISHED'
+  AND EXISTS (SELECT 1 FROM coach_athlete_connections c
+              WHERE c.coach_id = p.coach_id AND c.athlete_id = a.athlete_id AND c.status = 'accepted')`;
+
+export async function listAssignedPlans(
+  actor: PublicUser,
+  opts: { limit?: number; offset?: number } = {},
+  dbArg?: Db,
+): Promise<{ items: AssignedPlanSummary[]; total: number; limit: number; offset: number }> {
+  requireAthlete(actor);
+  const db = dbArg ?? (await getDb());
+  const limit = Math.min(Math.max(Math.trunc(opts.limit ?? PAGE_DEFAULT), 1), PAGE_MAX);
+  const offset = Math.max(Math.trunc(opts.offset ?? 0), 0);
+  const rows = await db<{
+    id: string; title: string; sport: string; skill_focus: string; start_date: string | null; end_date: string | null;
+    coach_id: string; coach_name: string; assigned_at: Date;
+  }[]>`
+    SELECT p.id, p.title, p.sport, p.skill_focus,
+           to_char(p.start_date, 'YYYY-MM-DD') AS start_date, to_char(p.end_date, 'YYYY-MM-DD') AS end_date,
+           p.coach_id, cu.display_name AS coach_name, a.assigned_at
+    FROM training_plan_assignments a
+    JOIN training_plans p ON p.id = a.plan_id
+    JOIN users cu ON cu.id = p.coach_id
+    WHERE ${ASSIGNED_WHERE(db, actor.id)}
+    ORDER BY p.start_date DESC NULLS LAST, p.id
+    LIMIT ${limit} OFFSET ${offset}`;
+  const [count] = await db<{ n: number }[]>`
+    SELECT COUNT(*)::int AS n
+    FROM training_plan_assignments a JOIN training_plans p ON p.id = a.plan_id
+    WHERE ${ASSIGNED_WHERE(db, actor.id)}`;
+  return {
+    items: rows.map((r) => ({
+      id: r.id, title: r.title, sport: r.sport, skillFocus: r.skill_focus, startDate: r.start_date, endDate: r.end_date,
+      coach: { id: r.coach_id, displayName: r.coach_name }, assignedAt: r.assigned_at.toISOString(),
+    })),
+    total: count?.n ?? 0, limit, offset,
+  };
+}
+
+export async function getAssignedPlan(actor: PublicUser, id: string, dbArg?: Db): Promise<AssignedPlanView> {
+  requireAthlete(actor);
+  requireId(id);
+  const db = dbArg ?? (await getDb());
+  const [row] = await db<{
+    id: string; title: string; description: string; sport: string; skill_focus: string; start_date: string | null; end_date: string | null;
+    coach_id: string; coach_name: string; assigned_at: Date; published_at: Date | null;
+  }[]>`
+    SELECT p.id, p.title, p.description, p.sport, p.skill_focus,
+           to_char(p.start_date, 'YYYY-MM-DD') AS start_date, to_char(p.end_date, 'YYYY-MM-DD') AS end_date,
+           p.coach_id, cu.display_name AS coach_name, a.assigned_at, p.published_at
+    FROM training_plan_assignments a
+    JOIN training_plans p ON p.id = a.plan_id
+    JOIN users cu ON cu.id = p.coach_id
+    WHERE p.id = ${id} AND ${ASSIGNED_WHERE(db, actor.id)}`;
+  // Someone else's plan, a draft, or a plan from a disconnected coach all look the same: not found.
+  if (!row) throw new PlanError(404, "plan_not_found", "Training plan not found.");
+  const [schedule, goals] = await Promise.all([
+    db<{ day_of_week: string; drill_name: string; duration_minutes: number; intensity: string }[]>`
+      SELECT day_of_week, drill_name, duration_minutes, intensity FROM training_plan_schedule_items WHERE plan_id = ${id} ORDER BY position`,
+    db<{ description: string }[]>`SELECT description FROM training_plan_goals WHERE plan_id = ${id} ORDER BY position`,
+  ]);
+  return {
+    id: row.id, title: row.title, description: row.description, sport: row.sport, skillFocus: row.skill_focus,
+    startDate: row.start_date, endDate: row.end_date,
+    coach: { id: row.coach_id, displayName: row.coach_name },
+    assignedAt: row.assigned_at.toISOString(),
+    publishedAt: row.published_at ? row.published_at.toISOString() : null,
+    schedule: schedule.map((s) => ({ day: s.day_of_week, drillName: s.drill_name, durationMinutes: s.duration_minutes, intensity: s.intensity })),
+    goals: goals.map((g) => g.description),
+  };
+}
