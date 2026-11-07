@@ -269,8 +269,10 @@ function CoachDashboard() {
   const conn = useCoachConnections();
   const dash = useCoachDashboard();
   const { user } = useAuth();
-  // The API only lets a verified coach send or accept requests; the permission comes with the session.
-  const canAct = !!user?.permissions.includes("sessions:verify");
+  const { verificationStatus } = useCoachProfile();
+  // The API only lets a verified coach send or accept requests. The session carries the permission,
+  // and the profile store learns about an approval as soon as it loads, so either one is enough.
+  const canAct = verificationStatus === "Verified" || !!user?.permissions.includes("sessions:verify");
 
   return (
     <div className="flex flex-col gap-6">
