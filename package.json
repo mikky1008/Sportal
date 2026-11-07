@@ -12,6 +12,7 @@
     "build": "npm run build:api && tsc --noEmit && vite build",
     "preview": "vite preview",
     "api": "node --env-file-if-exists=.env --experimental-strip-types --no-warnings server/index.ts",
+    "review:coach": "node --env-file-if-exists=.env --experimental-strip-types --no-warnings scripts/review-coach.ts",
     "seed:demo": "node --env-file-if-exists=.env --experimental-strip-types --no-warnings scripts/seed-demo.ts",
     "user:create": "node --env-file-if-exists=.env --experimental-strip-types --no-warnings scripts/create-user.ts",
     "cap:sync": "npm run build && npx cap sync",
