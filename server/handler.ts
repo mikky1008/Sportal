@@ -45,6 +45,20 @@
 //   PUT  /api/athletes/me/profile                  { sport, position, school, bio, skills[], achievements[{title,year}] } (full replace) -> { ok, profile }
 //   POST /api/athletes/me/records                  { label, value, recordedOn?, skill?, score? }  -> 201 { ok, id }
 //
+// Coach profile and verification (the profile is stored in the database; nothing is browser-only):
+//   GET  /api/coach/profile                        coach -> { ok, profile, verification }
+//   PUT  /api/coach/profile                        coach, CoachProfile fields as text -> { ok, profile, verification }
+//   POST /api/coach/verification/request           coach -> { ok, verification }   send the verification details to the reviewers
+//   GET  /api/admin/coach-verifications            reviewer ?status=pending|verified|rejected&limit&offset -> { ok, items, total }
+//   POST /api/admin/coach-verifications/:coachId/approve   reviewer { note? } -> { ok, coachId, status }
+//   POST /api/admin/coach-verifications/:coachId/reject    reviewer { note }  -> { ok, coachId, status }   (the reason is shown to the coach)
+// A reviewer is an account with the `coaches:review` permission (the `admin` role). Approving grants the
+// `verified_coach` role, which carries `sessions:verify`; rejecting removes it.
+//
+// Training plans assigned to me (student-athlete accounts only; PUBLISHED plans from coaches I'm connected to):
+//   GET /api/athletes/me/training-plans            ?limit&offset -> { ok, items, total }
+//   GET /api/athletes/me/training-plans/:id        -> { ok, plan }
+//
 // The session token is returned in the JSON body and sent back as an `Authorization: Bearer`
 // header (a native app has no browser cookie jar). Only a SHA-256 hash of it is stored.
 
@@ -82,7 +96,14 @@ import {
   saveMyProfile,
   setShortlisted,
 } from "./coach-athletes.server.ts";
-import { createPlan, getPlan, listPlans, PlanError, updatePlan } from "./training-plans.server.ts";
+import { createPlan, getAssignedPlan, getPlan, listAssignedPlans, listPlans, PlanError, updatePlan } from "./training-plans.server.ts";
+import {
+  getCoachProfile,
+  listVerificationRequests,
+  requestVerification,
+  reviewVerification,
+  saveCoachProfile,
+} from "./coach-profile.server.ts";
 import { PLAN_STATUSES, type PlanStatus } from "../src/lib/trainingPlanRules.ts";
 
 const TRUST_PROXY = process.env["TRUST_PROXY"] === "true" || !!process.env["VERCEL"];
@@ -392,6 +413,57 @@ async function handleCoachAndProfile(req: Request, path: string): Promise<Respon
   }
 }
 
+/** Coach profile, verification request, and the reviewer's endpoints. Returns null for any other path. */
+async function handleCoachProfileAndReview(req: Request, path: string): Promise<Response | null> {
+  const m = req.method;
+  const isGet = m === "GET" && path === "/api/coach/profile";
+  const isPut = m === "PUT" && path === "/api/coach/profile";
+  const isRequest = m === "POST" && path === "/api/coach/verification/request";
+  const isList = m === "GET" && path === "/api/admin/coach-verifications";
+  const decide = m === "POST" ? /^\/api\/admin\/coach-verifications\/([^/]+)\/(approve|reject)$/.exec(path) : null;
+  if (!isGet && !isPut && !isRequest && !isList && !decide) return null;
+
+  const user = await getUserBySessionToken(bearer(req));
+  if (!user) return send(req, 401, { ok: false, code: "unauthenticated", message: "Sign in to continue." });
+  const meta = requestMeta(req);
+
+  try {
+    if (isGet) return send(req, 200, { ok: true, ...(await getCoachProfile(user)) });
+    if (isPut) return send(req, 200, { ok: true, ...(await saveCoachProfile(user, await readJson(req), meta)) });
+    if (isRequest) return send(req, 200, { ok: true, verification: await requestVerification(user, meta) });
+    if (isList) {
+      const status = new URL(req.url).searchParams.get("status");
+      if (status !== null && !["pending", "verified", "rejected"].includes(status))
+        return send(req, 400, { ok: false, code: "validation", message: "status must be pending, verified or rejected." });
+      const paging = pagingFrom(req);
+      return send(req, 200, { ok: true, ...(await listVerificationRequests(user, { ...paging, ...(status ? { status: status as "pending" | "verified" | "rejected" } : {}) })) });
+    }
+    const body = (await readJson(req)) as Record<string, unknown> | null;
+    const result = await reviewVerification(user, decide?.[1] ?? "", decide?.[2] === "approve" ? "approve" : "reject", body && typeof body === "object" ? body["note"] : undefined, meta);
+    return send(req, 200, { ok: true, ...result });
+  } catch (err) {
+    if (err instanceof ConnectionError)
+      return send(req, err.httpStatus, { ok: false, code: err.code, message: err.message, ...err.extra });
+    throw err;
+  }
+}
+
+/** The athlete's own assigned training plans. Returns null for any other path. */
+async function handleAssignedPlans(req: Request, path: string): Promise<Response | null> {
+  if (req.method !== "GET") return null;
+  const m = /^\/api\/athletes\/me\/training-plans(?:\/([^/]+))?$/.exec(path);
+  if (!m) return null;
+  const user = await getUserBySessionToken(bearer(req));
+  if (!user) return send(req, 401, { ok: false, code: "unauthenticated", message: "Sign in to continue." });
+  try {
+    if (m[1]) return send(req, 200, { ok: true, plan: await getAssignedPlan(user, m[1]) });
+    return send(req, 200, { ok: true, ...(await listAssignedPlans(user, pagingFrom(req))) });
+  } catch (err) {
+    if (err instanceof PlanError) return send(req, err.httpStatus, { ok: false, code: err.code, message: err.message, ...err.extra });
+    throw err;
+  }
+}
+
 export async function handle(req: Request): Promise<Response> {
   try {
     const path = new URL(req.url).pathname.replace(/\/+$/, "") || "/";
@@ -416,6 +488,10 @@ export async function handle(req: Request): Promise<Response> {
     if (plans) return plans;
     const coachAndProfile = await handleCoachAndProfile(req, path);
     if (coachAndProfile) return coachAndProfile;
+    const coachReview = await handleCoachProfileAndReview(req, path);
+    if (coachReview) return coachReview;
+    const assigned = await handleAssignedPlans(req, path);
+    if (assigned) return assigned;
     return send(req, 404, { error: "not_found" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
