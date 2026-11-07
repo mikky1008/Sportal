@@ -1,18 +1,20 @@
 import { useMemo, useState } from "react";
-import { Eye, Search, UserRound } from "lucide-react";
+import { Eye, RefreshCw, Search, TriangleAlert, UserRound } from "lucide-react";
 import { CoachLayout } from "@/layouts/CoachLayout";
 import { PersonAvatar } from "@/components/avatar";
 import { AthleteDetailDialog } from "@/components/athlete-detail-dialog";
-import { PageHeader, Pill, btn } from "@/components/common";
-import { connectedAthletes, type ConnectedAthlete } from "@/data/coachAthletes";
+import { PageHeader, Pill, Select, btn } from "@/components/common";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useMyAthletes, type ConnectedAthlete, type LoadState } from "@/lib/coachApi";
 import { cn } from "@/lib/utils";
 
 /* ---------------------------------------------------------------------------------------------
    COACH: MY ATHLETES
-   Frontend only. The list comes from data/coachAthletes.ts (mock data). Search is by name, and
-   "View Athlete Profile" opens a popup.
+   The list comes from GET /api/coach/athletes (connected athletes only). Search is by name, the
+   sport filter is built from the sports in the list, and "View Athlete Profile" opens a popup.
 --------------------------------------------------------------------------------------------- */
 
+const ALL_SPORTS = "all";
 const field = "h-11 w-full rounded-xl border bg-background pl-10 pr-3 text-sm outline-none focus:ring-2 focus:ring-ring";
 
 const fullName = (a: ConnectedAthlete) => `${a.firstName} ${a.lastName}`;
@@ -26,17 +28,17 @@ function AthleteCard({ athlete, onView }: { athlete: ConnectedAthlete; onView: (
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
             <h2 className="text-lg font-bold">{name}</h2>
-            <Pill tone="primary">{athlete.sport}</Pill>
+            {athlete.sport && <Pill tone="primary">{athlete.sport}</Pill>}
           </div>
-          <p className="text-sm text-muted-foreground">{athlete.position}</p>
-          <p className="truncate text-sm text-muted-foreground" title={athlete.school}>{athlete.school}</p>
+          {athlete.position && <p className="text-sm text-muted-foreground">{athlete.position}</p>}
+          {athlete.school && <p className="truncate text-sm text-muted-foreground" title={athlete.school}>{athlete.school}</p>}
         </div>
       </div>
 
       <dl className="mt-4 flex flex-wrap gap-x-5 gap-y-1 rounded-xl bg-muted px-4 py-2.5 text-sm">
-        <div className="flex gap-1.5"><dt className="text-muted-foreground">Rank:</dt><dd className="font-semibold">#{String(athlete.rank).padStart(2, "0")}</dd></div>
-        <div className="flex gap-1.5"><dt className="text-muted-foreground">Perf:</dt><dd className="font-semibold">{athlete.performance}%</dd></div>
-        <div className="flex gap-1.5"><dt className="text-muted-foreground">Consistency:</dt><dd className="font-semibold">{athlete.consistency}%</dd></div>
+        <div className="flex gap-1.5"><dt className="text-muted-foreground">Rank:</dt><dd className="font-semibold">{athlete.rank === null ? "—" : `#${String(athlete.rank).padStart(2, "0")}`}</dd></div>
+        <div className="flex gap-1.5"><dt className="text-muted-foreground">Perf:</dt><dd className="font-semibold">{athlete.performance === null ? "—" : `${athlete.performance}%`}</dd></div>
+        <div className="flex gap-1.5"><dt className="text-muted-foreground">Consistency:</dt><dd className="font-semibold">{athlete.consistency === null ? "—" : `${athlete.consistency}%`}</dd></div>
       </dl>
 
       <button type="button" onClick={onView} aria-label={`View ${name}'s profile`} className={cn(btn.secondary, btn.sm, btn.block, "mt-4")}>
@@ -52,7 +54,7 @@ function NoResults({ onReset }: { onReset: () => void }) {
       <span className="grid h-12 w-12 place-items-center rounded-full bg-muted text-muted-foreground"><UserRound className="h-6 w-6" aria-hidden="true" /></span>
       <h2 className="text-lg font-bold">No Connected Athletes Found</h2>
       <p className="max-w-md text-sm text-muted-foreground">We couldn't find any connected athletes matching your current search criteria.</p>
-      <button type="button" onClick={onReset} className={cn(btn.secondary, btn.sm, "mt-2")}>Clear Search</button>
+      <button type="button" onClick={onReset} className={cn(btn.secondary, btn.sm, "mt-2")}>Reset Filters</button>
     </div>
   );
 }
@@ -67,18 +69,40 @@ function NoConnections() {
   );
 }
 
-/** The screen itself. `athletes` defaults to the mock list; pass [] to see the empty state. */
-export function MyAthletes({ athletes = connectedAthletes }: { athletes?: ConnectedAthlete[] }) {
+function LoadingList() {
+  return (
+    <ul role="status" aria-label="Loading athletes" className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {[0, 1].map((i) => <li key={i} className="surface p-5"><Skeleton className="h-24 w-full rounded-xl" /></li>)}
+    </ul>
+  );
+}
+
+function LoadError({ message, onRetry }: { message: string; onRetry: () => void }) {
+  return (
+    <div role="alert" className="surface flex flex-col items-center gap-3 px-6 py-10 text-center">
+      <TriangleAlert className="h-5 w-5 text-destructive" aria-hidden="true" />
+      <p className="text-sm text-muted-foreground">{message}</p>
+      <button type="button" onClick={onRetry} className={cn(btn.secondary, btn.sm)}><RefreshCw className="h-4 w-4" /> Try again</button>
+    </div>
+  );
+}
+
+/** The screen itself. Pass the athletes plus the load state; the page below fetches them. */
+export function MyAthletes({ athletes, state = "ready", error, onRetry }: {
+  athletes: ConnectedAthlete[]; state?: LoadState; error?: string | null; onRetry?: () => void;
+}) {
   const [query, setQuery] = useState("");
+  const [sport, setSport] = useState(ALL_SPORTS);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  const sportOptions = useMemo(() => [...new Set(athletes.map((a) => a.sport).filter(Boolean))].sort(), [athletes]);
   const term = query.trim().toLowerCase();
   const visible = useMemo(
-    () => athletes.filter((a) => term === "" || fullName(a).toLowerCase().includes(term)),
-    [athletes, term],
+    () => athletes.filter((a) => (sport === ALL_SPORTS || a.sport === sport) && (term === "" || fullName(a).toLowerCase().includes(term))),
+    [athletes, sport, term],
   );
   const selected = athletes.find((a) => a.id === selectedId) ?? null;
-  const reset = () => setQuery("");
+  const reset = () => { setQuery(""); setSport(ALL_SPORTS); };
   const total = athletes.length;
 
   return (
@@ -86,10 +110,14 @@ export function MyAthletes({ athletes = connectedAthletes }: { athletes?: Connec
       <PageHeader
         title="My Athletes"
         subtitle="Manage and monitor performance metrics for all connected athletes."
-        action={<p className="text-sm font-medium text-muted-foreground" aria-live="polite">Total Connected: {total} {total === 1 ? "Athlete" : "Athletes"}</p>}
+        action={state === "ready" ? <p className="text-sm font-medium text-muted-foreground" aria-live="polite">Total Connected: {total} {total === 1 ? "Athlete" : "Athletes"}</p> : undefined}
       />
 
-      {total === 0 ? (
+      {state === "loading" ? (
+        <LoadingList />
+      ) : state === "error" ? (
+        <LoadError message={error ?? "Couldn't load your athletes."} onRetry={onRetry ?? (() => {})} />
+      ) : total === 0 ? (
         <NoConnections />
       ) : (
         <>
@@ -99,6 +127,13 @@ export function MyAthletes({ athletes = connectedAthletes }: { athletes?: Connec
               <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} maxLength={80}
                 placeholder="Search athlete by name..." aria-label="Search athletes by name" className={field} />
             </div>
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <span className="whitespace-nowrap">Filter by Sport:</span>
+              <Select value={sport} onChange={(e) => setSport(e.target.value)} aria-label="Filter by sport" wrapperClassName="min-w-40">
+                <option value={ALL_SPORTS}>All Sports</option>
+                {sportOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+              </Select>
+            </label>
           </div>
 
           {visible.length === 0 ? (
@@ -117,9 +152,10 @@ export function MyAthletes({ athletes = connectedAthletes }: { athletes?: Connec
 }
 
 export default function MyAthletesPage() {
+  const { athletes, state, error, reload } = useMyAthletes();
   return (
     <CoachLayout>
-      <MyAthletes />
+      <MyAthletes athletes={athletes} state={state} error={error} onRetry={reload} />
     </CoachLayout>
   );
 }
