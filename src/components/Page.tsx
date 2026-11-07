@@ -28,7 +28,7 @@ interface PageProps {
 
 /** The few links that stay visible in the top bar. Everything else lives in the Menu dropdown. */
 const TOP_TABS = ["/dashboard", "/performance", "/rankings"];
-const MENU_ITEMS = ["/profile", "/scholarships", "/recruiting", "/settings"];
+const MENU_ITEMS = ["/profile", "/training-plans", "/scholarships", "/recruiting", "/settings"];
 
 /** Every screen is one of these: an Ionic page with a top navigation bar, scrolling content and (on phones) a tab bar. */
 export function Page({ children, shell = true, backTo, hideTabs }: PageProps) {
