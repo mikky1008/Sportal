@@ -2,7 +2,7 @@ import { Award, Medal, Zap } from "lucide-react";
 import { PersonAvatar } from "@/components/avatar";
 import { Pill, btn } from "@/components/common";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import type { ConnectedAthlete } from "@/data/coachAthletes";
+import type { ConnectedAthlete } from "@/lib/coachApi";
 import { cn } from "@/lib/utils";
 
 function Section({ title, icon, children }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
@@ -35,13 +35,13 @@ export function AthleteDetailDialog({ athlete, onClose }: { athlete: ConnectedAt
               <PersonAvatar name={`${athlete.firstName} ${athlete.lastName}`} {...(athlete.photo ? { src: athlete.photo } : {})} size="md" />
               <div className="min-w-0">
                 <p className="truncate text-lg font-bold">{athlete.firstName} {athlete.lastName}</p>
-                <p className="text-sm text-muted-foreground">{athlete.sport} • {athlete.position}</p>
-                <p className="truncate text-sm text-muted-foreground">{athlete.school}</p>
+                <p className="text-sm text-muted-foreground">{[athlete.sport, athlete.position].filter(Boolean).join(" • ") || "Sport not set"}</p>
+                {athlete.school && <p className="truncate text-sm text-muted-foreground">{athlete.school}</p>}
               </div>
             </div>
 
             <dl className="mt-4 grid grid-cols-3 gap-2 text-center">
-              {[["Rank", `#${athlete.rank}`], ["Performance", `${athlete.performance}%`], ["Consistency", `${athlete.consistency}%`]].map(([k, v]) => (
+              {[["Rank", athlete.rank === null ? "—" : `#${athlete.rank}`], ["Performance", athlete.performance === null ? "—" : `${athlete.performance}%`], ["Consistency", athlete.consistency === null ? "—" : `${athlete.consistency}%`]].map(([k, v]) => (
                 <div key={k} className="rounded-xl border px-2 py-2">
                   <dt className="text-xs text-muted-foreground">{k}</dt>
                   <dd className="font-display text-lg font-bold">{v}</dd>
@@ -50,7 +50,7 @@ export function AthleteDetailDialog({ athlete, onClose }: { athlete: ConnectedAt
             </dl>
 
             <Section title="Biography">
-              <p className="text-sm text-muted-foreground">{athlete.bio}</p>
+              <p className="text-sm text-muted-foreground">{athlete.bio || "No biography added yet."}</p>
             </Section>
 
             <Section title="Evaluated Skills">
