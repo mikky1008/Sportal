@@ -44,6 +44,8 @@ function scopeStoresTo(user: PublicUser | null) {
   profileStore.refresh();
   profileExtrasStore.refresh();
   coachProfileStore.refresh();
+  // A coach's profile and verification status live on the server.
+  if (user && primaryRole(user.roles) === "coach") void coachProfileStore.load();
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
