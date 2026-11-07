@@ -10,7 +10,7 @@ import { POST_SIGNUP_PATH } from "@/lib/roles";
 import { profileStore } from "@/lib/profileStore";
 import { profileExtrasStore } from "@/lib/profileExtrasStore";
 import { coachProfileStore, POSITION_TITLES } from "@/lib/coachProfileStore";
-import { sports } from "@/data/mock";
+import { sports } from "@/lib/sports";
 import { cn } from "@/lib/utils";
 import court from "@/assets/court.jpg";
 
@@ -176,20 +176,6 @@ function SignupScreen() {
         profileStore.refresh();
         profileExtrasStore.refresh();
         coachProfileStore.refresh();
-        if (role !== "athlete") {
-          // Pre-fill the coach profile with what was just entered (same browser-side store as before).
-          try {
-            const cur = coachProfileStore.getSnapshot().profile;
-            coachProfileStore.save({
-              ...cur,
-              organizationName: values.organization.trim(),
-              organizationType: role === "university" ? "University" : cur.organizationType,
-              ...(role === "coach" ? { positionTitle: values.position, primarySport: values.sport } : {}),
-            });
-          } catch {
-            // an over-long value: leave the profile blank, it can be filled in later
-          }
-        }
         toast.success("Account created", { description: "Taking you to your Sportal home…" });
         setRedirecting(true);
         setTimeout(() => accept(res.user, POST_SIGNUP_PATH[res.role]), 900);
