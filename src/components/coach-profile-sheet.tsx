@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Select, btn } from "@/components/common";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { sports } from "@/data/mock";
+import { sports } from "@/lib/sports";
 import {
   COACH_LIMITS, COMPETITION_LEVELS, CREDENTIAL_TYPES, CoachValidationError, ORGANIZATION_TYPES, POSITION_TITLES,
   coachProfileStore, hasCoachErrors, useCoachProfile, validateCoach, type CoachErrors, type CoachProfile,
@@ -29,15 +29,16 @@ function CoachForm({ onDone }: { onDone: () => void }) {
   const saved = useCoachProfile().profile;
   const [draft, setDraft] = useState<CoachProfile>(saved);
   const [tried, setTried] = useState(false);
+  const [saving, setSaving] = useState(false);
   const errors: CoachErrors = validateCoach(draft);
   const shown: CoachErrors = tried ? errors : {};
   const set = (patch: Partial<CoachProfile>) => setDraft((d) => ({ ...d, ...patch }));
 
-  const text = (k: keyof CoachProfile, label: string, extra?: { placeholder?: string; type?: string; inputMode?: "numeric" | "email" }) => (
+  const text = (k: keyof CoachProfile, label: string, extra?: { placeholder?: string; type?: string; inputMode?: "numeric" | "email"; readOnly?: boolean }) => (
     <label className="flex flex-col gap-1.5 text-sm font-medium">{label}
       <input
         className={field} value={draft[k]} onChange={(e) => set({ [k]: e.target.value })}
-        aria-invalid={!!shown[k]} placeholder={extra?.placeholder} type={extra?.type} inputMode={extra?.inputMode}
+        aria-invalid={!!shown[k]} placeholder={extra?.placeholder} type={extra?.type} inputMode={extra?.inputMode} readOnly={extra?.readOnly}
       />
       <Err msg={shown[k]} />
     </label>
@@ -51,18 +52,22 @@ function CoachForm({ onDone }: { onDone: () => void }) {
     </label>
   );
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTried(true);
+    if (saving) return;
     const before = computeCoachCompletion(saved).percent;
+    setSaving(true);
     try {
-      const next = coachProfileStore.save(draft);
+      const next = await coachProfileStore.save(draft);
       const after = computeCoachCompletion(next.profile).percent;
       toast.success(after > before ? `Coach profile saved · ${after}% complete (+${after - before}%)` : `Coach profile saved · ${after}% complete`);
       onDone();
     } catch (err) {
       if (err instanceof CoachValidationError) toast.error("Fix the highlighted fields to save.");
-      else throw err;
+      else toast.error(err instanceof Error ? err.message : "Couldn't save your profile. Please try again.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -73,7 +78,7 @@ function CoachForm({ onDone }: { onDone: () => void }) {
           {text("firstName", "First name")}
           {text("lastName", "Last name")}
         </div>
-        {text("email", "Email", { type: "email", inputMode: "email", placeholder: "you@school.edu" })}
+        {text("email", "Sign-in email", { type: "email", inputMode: "email", readOnly: true })}
       </Group>
       <Group id="organization" title="Organization Information">
         {text("organizationName", "Organization name", { placeholder: "e.g. FEU Tamaraws" })}
@@ -110,7 +115,7 @@ function CoachForm({ onDone }: { onDone: () => void }) {
         {text("credentialReference", "Credential or ID reference", { placeholder: "License or ID number" })}
       </Group>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" className={btn.primary}>Save changes</button>
+        <button type="submit" className={btn.primary} disabled={saving}>{saving ? "Saving…" : "Save changes"}</button>
         <button type="button" className={btn.secondary} onClick={onDone}>Cancel</button>
         {tried && hasCoachErrors(errors) && <span role="alert" className="text-sm text-destructive">Some fields need attention.</span>}
       </div>
@@ -122,6 +127,7 @@ function CoachForm({ onDone }: { onDone: () => void }) {
 export function CoachProfileSheet({
   open, section, onOpenChange,
 }: { open: boolean; section: CoachSectionId | null; onOpenChange: (open: boolean) => void }) {
+  const { load } = useCoachProfile();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -138,7 +144,8 @@ export function CoachProfileSheet({
           <SheetTitle>Coach profile</SheetTitle>
           <SheetDescription>Fill in each section at your own pace — you can save part-way and come back.</SheetDescription>
         </SheetHeader>
-        <CoachForm onDone={() => onOpenChange(false)} />
+        {/* keyed by the load state so the form starts from the saved profile once it has arrived */}
+        <CoachForm key={load} onDone={() => onOpenChange(false)} />
       </SheetContent>
     </Sheet>
   );
