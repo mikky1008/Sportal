@@ -7,7 +7,10 @@ import { Pill, btn } from "@/components/common";
 import { cn } from "@/lib/utils";
 import { profileStore, useAthleteProfile } from "@/lib/profileStore";
 import { profileExtrasStore, useProfileExtras } from "@/lib/profileExtrasStore";
-import { useCoachProfile, type CoachVerificationStatus } from "@/lib/coachProfileStore";
+import {
+  coachProfileStore, CoachValidationError, useCoachProfile,
+  type CoachVerification, type CoachVerificationStatus,
+} from "@/lib/coachProfileStore";
 import {
   athleteMessage, coachMessage, computeAthleteCompletion, computeCoachCompletion,
   type AthleteSectionId, type CoachSectionId,
@@ -71,25 +74,54 @@ const verificationTone: Record<CoachVerificationStatus, "warning" | "success" | 
   Verified: "success",
   Rejected: "default",
 };
-const verificationText: Record<CoachVerificationStatus, string> = {
-  Pending: "Pending review",
-  Verified: "Verified",
-  Rejected: "Not approved",
-};
+
+function verificationLabel(v: CoachVerification): string {
+  if (v.status === "Verified") return "Verified";
+  if (v.status === "Rejected") return "Not approved";
+  return v.requested ? "Pending review" : "Not requested yet";
+}
 
 /** Organization verification is reported next to — never inside — profile completion. */
-function VerificationStatus({ status }: { status: CoachVerificationStatus }) {
+function VerificationStatus({ verification }: { verification: CoachVerification }) {
+  const [sending, setSending] = useState(false);
+  const request = async () => {
+    setSending(true);
+    try {
+      await coachProfileStore.requestVerification();
+      toast.success("Verification request sent", { description: "Sportal's team will review your details." });
+    } catch (err) {
+      if (err instanceof CoachValidationError) toast.error("Complete the Verification Information in your profile first.");
+      else toast.error(err instanceof Error ? err.message : "Couldn't send the request. Please try again.");
+    } finally {
+      setSending(false);
+    }
+  };
+  const sent = verification.submittedAt ? new Date(verification.submittedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : null;
+
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm" data-testid="coach-verification">
-      <span className="font-semibold">Organization verification</span>
-      <Pill tone={verificationTone[status]}>{verificationText[status]}</Pill>
-      <span className="text-xs text-muted-foreground">Reviewed separately by Sportal. It doesn't change your profile completion.</span>
+    <div className="flex flex-col gap-2 text-sm" data-testid="coach-verification">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-semibold">Organization verification</span>
+        <Pill tone={verificationTone[verification.status]}>{verificationLabel(verification)}</Pill>
+        {verification.requested && sent && <span className="text-xs text-muted-foreground">Sent {sent}</span>}
+        {verification.canRequest && (
+          <button type="button" className={cn(btn.secondary, btn.sm)} onClick={request} disabled={sending}>
+            {sending ? "Sending…" : verification.status === "Rejected" ? "Request again" : "Request verification"}
+          </button>
+        )}
+      </div>
+      {verification.status === "Rejected" && verification.note && (
+        <p role="note" className="rounded-xl bg-muted px-3 py-2 text-xs text-foreground">Reviewer's note: {verification.note}</p>
+      )}
+      <span className="text-xs text-muted-foreground">
+        Reviewed separately by Sportal using the Verification Information in your profile. It doesn't change your profile completion.
+      </span>
     </div>
   );
 }
 
 export function CoachCompletionCard() {
-  const { profile, verificationStatus } = useCoachProfile();
+  const { profile, verification } = useCoachProfile();
   const result = useMemo(() => computeCoachCompletion(profile), [profile]);
   const [open, setOpen] = useState(false);
   const [section, setSection] = useState<CoachSectionId | null>(null);
@@ -104,7 +136,7 @@ export function CoachCompletionCard() {
         title="Complete Your Coach Profile"
         result={result}
         message={coachMessage(result)}
-        footer={<VerificationStatus status={verificationStatus} />}
+        footer={<VerificationStatus verification={verification} />}
         completeText={<button type="button" className={btn.secondary} onClick={() => openAt("basic")}>Edit profile</button>}
         renderAction={(s, className, children) => (
           <button type="button" className={className} onClick={() => openAt(s.id as CoachSectionId)}>{children}</button>
