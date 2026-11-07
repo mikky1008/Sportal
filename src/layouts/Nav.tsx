@@ -1,6 +1,6 @@
 import { useLocation } from "react-router-dom";
 import {
-  LayoutDashboard, User, Activity, Trophy, GraduationCap, UserSearch, Bell, Settings, Plus,
+  LayoutDashboard, User, Activity, Trophy, GraduationCap, UserSearch, Bell, Settings, Plus, ClipboardList,
 } from "lucide-react";
 import { Link } from "@/router-compat";
 import { useAuth } from "@/auth/AuthContext";
@@ -12,6 +12,7 @@ export const nav = [
   { to: "/profile", label: "My Profile", icon: User },
   { to: "/performance", label: "Performance", icon: Activity },
   { to: "/rankings", label: "Rankings", icon: Trophy },
+  { to: "/training-plans", label: "Training Plans", icon: ClipboardList },
   { to: "/scholarships", label: "Scholarships", icon: GraduationCap },
   { to: "/recruiting", label: "Recruiting", icon: UserSearch },
   { to: "/notifications", label: "Notifications", icon: Bell },
