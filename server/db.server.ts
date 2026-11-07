@@ -282,6 +282,114 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_training_plan_assignments_athlete ON training_plan_assignments (athlete_id);
     `,
   },
+  {
+    version: 4,
+    name: "athlete_profiles_and_coach_dashboard",
+    sql: `
+      -- What a coach sees on My Athletes and in the athlete profile popup. One row per athlete;
+      -- the athlete edits sport/position/school/bio. ranking, performance and consistency are
+      -- NOT editable by the athlete (they are scores, set by the platform or an admin).
+      CREATE TABLE athlete_profiles (
+        user_id          TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        sport            TEXT NOT NULL DEFAULT '',
+        playing_position TEXT NOT NULL DEFAULT '',
+        school           TEXT NOT NULL DEFAULT '',
+        bio              TEXT NOT NULL DEFAULT '',
+        ranking          INTEGER,
+        performance      NUMERIC(5,2),
+        consistency      NUMERIC(5,2),
+        created_at       TIMESTAMPTZ NOT NULL,
+        updated_at       TIMESTAMPTZ NOT NULL,
+        CONSTRAINT athlete_profiles_ranking_check     CHECK (ranking IS NULL OR ranking >= 1),
+        CONSTRAINT athlete_profiles_performance_check CHECK (performance IS NULL OR performance BETWEEN 0 AND 100),
+        CONSTRAINT athlete_profiles_consistency_check CHECK (consistency IS NULL OR consistency BETWEEN 0 AND 100),
+        CONSTRAINT athlete_profiles_bio_check         CHECK (length(bio) <= 1000)
+      );
+
+      CREATE TABLE athlete_skills (
+        id         TEXT PRIMARY KEY,
+        athlete_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        position   INTEGER NOT NULL,
+        name       TEXT NOT NULL,
+        CONSTRAINT athlete_skills_position_key UNIQUE (athlete_id, position),
+        CONSTRAINT athlete_skills_name_check CHECK (length(btrim(name)) BETWEEN 1 AND 60)
+      );
+
+      CREATE TABLE athlete_achievements (
+        id         TEXT PRIMARY KEY,
+        athlete_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        position   INTEGER NOT NULL,
+        title      TEXT NOT NULL,
+        year       TEXT NOT NULL DEFAULT '',
+        CONSTRAINT athlete_achievements_position_key UNIQUE (athlete_id, position),
+        CONSTRAINT athlete_achievements_title_check CHECK (length(btrim(title)) BETWEEN 1 AND 160)
+      );
+
+      -- Logged performance records. "skill" + "score" (0-100) are optional; when present they feed
+      -- the coach's Team Performance Snapshot (average score per skill, and change vs the 30 days before).
+      CREATE TABLE athlete_records (
+        id          TEXT PRIMARY KEY,
+        athlete_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        label       TEXT NOT NULL,
+        value       TEXT NOT NULL,
+        skill       TEXT,
+        score       NUMERIC(5,2),
+        recorded_on DATE NOT NULL,
+        created_at  TIMESTAMPTZ NOT NULL,
+        CONSTRAINT athlete_records_label_check CHECK (length(btrim(label)) BETWEEN 1 AND 80),
+        CONSTRAINT athlete_records_value_check CHECK (length(btrim(value)) BETWEEN 1 AND 40),
+        CONSTRAINT athlete_records_score_check CHECK (score IS NULL OR score BETWEEN 0 AND 100)
+      );
+      CREATE INDEX idx_athlete_records_athlete ON athlete_records (athlete_id, recorded_on DESC);
+
+      -- Recruitment: a coach's shortlist, inquiries to athletes, the messages between them, and
+      -- athletes who applied to a coach's program. The dashboard reads these.
+      CREATE TABLE coach_shortlist (
+        coach_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        athlete_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL,
+        PRIMARY KEY (coach_id, athlete_id),
+        CONSTRAINT coach_shortlist_distinct_check CHECK (coach_id <> athlete_id)
+      );
+
+      CREATE TABLE recruitment_inquiries (
+        id         TEXT PRIMARY KEY,
+        coach_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        athlete_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status     TEXT NOT NULL DEFAULT 'awaiting',
+        created_at TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL,
+        CONSTRAINT recruitment_inquiries_status_check CHECK (status IN ('awaiting', 'replied', 'accepted', 'declined')),
+        CONSTRAINT recruitment_inquiries_distinct_check CHECK (coach_id <> athlete_id)
+      );
+      CREATE INDEX idx_recruitment_inquiries_coach ON recruitment_inquiries (coach_id, status);
+
+      CREATE TABLE coach_messages (
+        id         TEXT PRIMARY KEY,
+        coach_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        athlete_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        sender_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        body       TEXT NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL,
+        read_at    TIMESTAMPTZ,
+        CONSTRAINT coach_messages_sender_check CHECK (sender_id IN (coach_id, athlete_id)),
+        CONSTRAINT coach_messages_body_check CHECK (length(btrim(body)) BETWEEN 1 AND 2000)
+      );
+      CREATE INDEX idx_coach_messages_thread ON coach_messages (coach_id, athlete_id, created_at DESC);
+
+      CREATE TABLE athlete_applications (
+        id         TEXT PRIMARY KEY,
+        coach_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        athlete_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status     TEXT NOT NULL DEFAULT 'new',
+        created_at TIMESTAMPTZ NOT NULL,
+        updated_at TIMESTAMPTZ NOT NULL,
+        CONSTRAINT athlete_applications_status_check CHECK (status IN ('new', 'reviewed', 'dismissed')),
+        CONSTRAINT athlete_applications_distinct_check CHECK (coach_id <> athlete_id),
+        CONSTRAINT athlete_applications_pair_key UNIQUE (coach_id, athlete_id)
+      );
+    `,
+  },
 ];
 
 const MIGRATION_LOCK_ID = 727_274_001;
