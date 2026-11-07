@@ -14,6 +14,8 @@ import CompleteProfile from "@/pages/CompleteProfile";
 import Dashboard from "@/pages/Dashboard";
 import CoachDashboard from "@/pages/CoachDashboard";
 import MyAthletes from "@/pages/MyAthletes";
+import TrainingPlans from "@/pages/TrainingPlans";
+import TrainingPlanDetail from "@/pages/TrainingPlanDetail";
 import CreateTrainingPlan from "@/pages/CreateTrainingPlan";
 import Profile from "@/pages/Profile";
 import Performance from "@/pages/Performance";
@@ -37,6 +39,8 @@ const PROTECTED: { path: string; component: ComponentType }[] = [
   // "new" starts a blank plan; any other value is the id of the plan to edit
   { path: "/coach/training-plans/:planId", component: CreateTrainingPlan },
   { path: "/profile", component: Profile },
+  { path: "/training-plans", component: TrainingPlans },
+  { path: "/training-plans/:planId", component: TrainingPlanDetail },
   { path: "/performance", component: Performance },
   { path: "/performance/new", component: NewPractice },
   { path: "/performance/analysis", component: Analysis },
