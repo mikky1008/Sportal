@@ -390,6 +390,56 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 5,
+    name: "coach_profile_and_verification",
+    sql: `
+      -- The rest of the coach profile form. organization, coaching_position and sport_specialization
+      -- already exist from sign up; names live in user_profiles and the email in users.
+      ALTER TABLE coach_profiles
+        ADD COLUMN organization_type     TEXT NOT NULL DEFAULT '',
+        ADD COLUMN organization_location TEXT NOT NULL DEFAULT '',
+        ADD COLUMN program_name          TEXT NOT NULL DEFAULT '',
+        ADD COLUMN competition_level     TEXT NOT NULL DEFAULT '',
+        ADD COLUMN years_experience      TEXT NOT NULL DEFAULT '',
+        ADD COLUMN background            TEXT NOT NULL DEFAULT '',
+        ADD COLUMN certifications        TEXT NOT NULL DEFAULT '',
+        ADD COLUMN official_email        TEXT NOT NULL DEFAULT '',
+        ADD COLUMN credential_type       TEXT NOT NULL DEFAULT '',
+        ADD COLUMN credential_reference  TEXT NOT NULL DEFAULT '';
+
+      -- One row per coach who has asked to be verified. The coach sends the request; only a reviewer
+      -- (permission coaches:review) can approve or reject it. The credential details are copied in
+      -- when the request is sent, so the reviewer judges exactly what was submitted even if the
+      -- coach edits their profile afterwards. A coach with NO row has not asked yet.
+      CREATE TABLE coach_verifications (
+        coach_id             TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        status               TEXT NOT NULL DEFAULT 'pending',
+        organization         TEXT NOT NULL,
+        official_email       TEXT NOT NULL,
+        credential_type      TEXT NOT NULL,
+        credential_reference TEXT NOT NULL,
+        submitted_at         TIMESTAMPTZ NOT NULL,
+        reviewed_at          TIMESTAMPTZ,
+        reviewed_by          TEXT REFERENCES users(id) ON DELETE SET NULL,
+        review_note          TEXT NOT NULL DEFAULT '',
+        updated_at           TIMESTAMPTZ NOT NULL,
+        CONSTRAINT coach_verifications_status_check CHECK (status IN ('pending', 'verified', 'rejected')),
+        CONSTRAINT coach_verifications_reviewed_check CHECK ((status = 'pending') = (reviewed_at IS NULL)),
+        CONSTRAINT coach_verifications_note_check CHECK (length(review_note) <= 500)
+      );
+      CREATE INDEX idx_coach_verifications_status ON coach_verifications (status, submitted_at);
+
+      -- Approval grants this role; rejecting or revoking removes it. It carries 'sessions:verify',
+      -- which is what the connections API already reads as "verified coach".
+      INSERT INTO roles (name, description) VALUES ('verified_coach', 'Coach whose organization Sportal has verified');
+      INSERT INTO permissions (name, description) VALUES ('coaches:review', 'Review, approve and reject coach verification requests');
+      INSERT INTO role_permissions (role_id, permission_id)
+        SELECT r.id, p.id FROM roles r JOIN permissions p ON p.name = 'sessions:verify' WHERE r.name = 'verified_coach';
+      INSERT INTO role_permissions (role_id, permission_id)
+        SELECT r.id, p.id FROM roles r JOIN permissions p ON p.name = 'coaches:review' WHERE r.name = 'admin';
+    `,
+  },
 ];
 
 const MIGRATION_LOCK_ID = 727_274_001;
