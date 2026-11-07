@@ -33,6 +33,18 @@
 // Athletes in `athleteIds` must have an accepted connection with the coach (403 athlete_not_connected).
 // Validation failures are 400 { ok: false, code: "validation", message, fieldErrors }.
 //
+// Coach dashboard and My Athletes (coach accounts only; a coach only ever sees athletes they are connected to):
+//   GET    /api/coach/athletes                     ?limit&offset -> { ok, items: AthleteDetail[], total }   connected athletes with
+//                                                    profile, skills, achievements and recent records (the My Athletes page + popup)
+//   GET    /api/coach/dashboard                    -> { ok, pendingActions, recruitment, performance }   the dashboard cards
+//   PUT    /api/coach/shortlist/:athleteId         -> { ok, athleteId, shortlisted: true }                add to shortlist
+//   DELETE /api/coach/shortlist/:athleteId         -> { ok, athleteId, shortlisted: false }               remove from shortlist
+//
+// The athlete's own profile (student-athlete accounts only):
+//   GET  /api/athletes/me/profile                  -> { ok, profile }
+//   PUT  /api/athletes/me/profile                  { sport, position, school, bio, skills[], achievements[{title,year}] } (full replace) -> { ok, profile }
+//   POST /api/athletes/me/records                  { label, value, recordedOn?, skill?, score? }  -> 201 { ok, id }
+//
 // The session token is returned in the JSON body and sent back as an `Authorization: Bearer`
 // header (a native app has no browser cookie jar). Only a SHA-256 hash of it is stored.
 
@@ -62,6 +74,14 @@ import {
   sendRequest,
   type ListKind,
 } from "./connections.server.ts";
+import {
+  addMyRecord,
+  getCoachDashboard,
+  getMyProfile,
+  listMyAthletes,
+  saveMyProfile,
+  setShortlisted,
+} from "./coach-athletes.server.ts";
 import { createPlan, getPlan, listPlans, PlanError, updatePlan } from "./training-plans.server.ts";
 import { PLAN_STATUSES, type PlanStatus } from "../src/lib/trainingPlanRules.ts";
 
@@ -117,7 +137,7 @@ function send(req: Request, status: number, body: unknown): Response {
   if (origin && ALLOWED_ORIGINS.has(origin)) {
     headers.set("access-control-allow-origin", origin);
     headers.set("access-control-allow-headers", "authorization, content-type");
-    headers.set("access-control-allow-methods", "GET, POST, PUT, OPTIONS");
+    headers.set("access-control-allow-methods", "GET, POST, PUT, DELETE, OPTIONS");
     headers.set("access-control-max-age", "600");
   }
   return new Response(status === 204 ? null : JSON.stringify(body), { status, headers });
@@ -343,6 +363,35 @@ async function handleTrainingPlans(req: Request, path: string): Promise<Response
   }
 }
 
+/** Returns null when the path is not a coach-dashboard or athlete-profile route, so the caller can keep matching. */
+async function handleCoachAndProfile(req: Request, path: string): Promise<Response | null> {
+  const m = req.method;
+  const isCoachAthletes = m === "GET" && path === "/api/coach/athletes";
+  const isDashboard = m === "GET" && path === "/api/coach/dashboard";
+  const shortlist = m === "PUT" || m === "DELETE" ? /^\/api\/coach\/shortlist\/([^/]+)$/.exec(path) : null;
+  const isGetProfile = m === "GET" && path === "/api/athletes/me/profile";
+  const isPutProfile = m === "PUT" && path === "/api/athletes/me/profile";
+  const isAddRecord = m === "POST" && path === "/api/athletes/me/records";
+  if (!isCoachAthletes && !isDashboard && !shortlist && !isGetProfile && !isPutProfile && !isAddRecord) return null;
+
+  // Authentication comes first: nothing below runs, and no body is read, for an anonymous caller.
+  const user = await getUserBySessionToken(bearer(req));
+  if (!user) return send(req, 401, { ok: false, code: "unauthenticated", message: "Sign in to continue." });
+
+  try {
+    if (isCoachAthletes) return send(req, 200, { ok: true, ...(await listMyAthletes(user, pagingFrom(req))) });
+    if (isDashboard) return send(req, 200, { ok: true, ...(await getCoachDashboard(user)) });
+    if (shortlist) return send(req, 200, { ok: true, ...(await setShortlisted(user, shortlist[1] ?? "", m === "PUT")) });
+    if (isGetProfile) return send(req, 200, { ok: true, profile: await getMyProfile(user) });
+    if (isPutProfile) return send(req, 200, { ok: true, profile: await saveMyProfile(user, await readJson(req)) });
+    return send(req, 201, { ok: true, ...(await addMyRecord(user, await readJson(req))) });
+  } catch (err) {
+    if (err instanceof ConnectionError)
+      return send(req, err.httpStatus, { ok: false, code: err.code, message: err.message, ...err.extra });
+    throw err;
+  }
+}
+
 export async function handle(req: Request): Promise<Response> {
   try {
     const path = new URL(req.url).pathname.replace(/\/+$/, "") || "/";
@@ -365,6 +414,8 @@ export async function handle(req: Request): Promise<Response> {
     if (athletes) return athletes;
     const plans = await handleTrainingPlans(req, path);
     if (plans) return plans;
+    const coachAndProfile = await handleCoachAndProfile(req, path);
+    if (coachAndProfile) return coachAndProfile;
     return send(req, 404, { error: "not_found" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "";
