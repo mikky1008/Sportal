@@ -1,17 +1,17 @@
-// Component tests for the coach's My Athletes page. Mock data only; no API or database.
+// Component tests for the coach's My Athletes page. Uses a fixture list; no API or database.
 // CoachLayout is not under test, so the page's inner component is rendered directly.
 import { afterEach, describe, expect, it } from "vitest";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MyAthletes } from "@/pages/MyAthletes";
-import { connectedAthletes } from "@/data/coachAthletes";
+import { connectedAthletes } from "./fixtures/connectedAthletes";
 
 afterEach(cleanup);
 const cards = () => within(screen.getByRole("list", { name: "Connected athletes" })).getAllByRole("listitem");
 
 describe("list", () => {
   it("shows every connected athlete with sport, position and school", () => {
-    render(<MyAthletes />);
+    render(<MyAthletes athletes={connectedAthletes} />);
     expect(cards()).toHaveLength(4);
     expect(screen.getByText("Total Connected: 4 Athletes")).toBeTruthy();
     const juan = cards()[0]!;
@@ -20,35 +20,43 @@ describe("list", () => {
     expect(cards()[1]!.querySelector("img")).toBeNull(); // the others show initials
   });
   it("has a View Athlete Profile button on every card", () => {
-    render(<MyAthletes />);
+    render(<MyAthletes athletes={connectedAthletes} />);
     expect(screen.getAllByRole("button", { name: /^View .+ profile$/ })).toHaveLength(4);
   });
 });
 
-describe("search", () => {
+describe("search and filter", () => {
   it("search by name is case-insensitive", async () => {
-    render(<MyAthletes />);
+    render(<MyAthletes athletes={connectedAthletes} />);
     await userEvent.type(screen.getByLabelText("Search athletes by name"), "kEVIN");
     expect(cards()).toHaveLength(1);
     expect(within(cards()[0]!).getByText("Kevin Ramos")).toBeTruthy();
   });
-  it("has no sport filter", () => {
-    render(<MyAthletes />);
-    expect(screen.queryByLabelText("Filter by sport")).toBeNull();
+  it("filters by sport", async () => {
+    render(<MyAthletes athletes={connectedAthletes} />);
+    await userEvent.selectOptions(screen.getByLabelText("Filter by sport"), "Basketball");
+    expect(cards()).toHaveLength(2);
   });
-  it("shows the no-results state and Clear Search restores the list", async () => {
-    render(<MyAthletes />);
+  it("search and sport filter combine", async () => {
+    render(<MyAthletes athletes={connectedAthletes} />);
+    await userEvent.selectOptions(screen.getByLabelText("Filter by sport"), "Basketball");
+    await userEvent.type(screen.getByLabelText("Search athletes by name"), "marco");
+    expect(screen.getByText("No Connected Athletes Found")).toBeTruthy();
+  });
+  it("shows the no-results state and Reset Filters restores the list", async () => {
+    render(<MyAthletes athletes={connectedAthletes} />);
     await userEvent.type(screen.getByLabelText("Search athletes by name"), "zzzz");
     expect(screen.getByText("No Connected Athletes Found")).toBeTruthy();
-    await userEvent.click(screen.getByRole("button", { name: "Clear Search" }));
+    await userEvent.click(screen.getByRole("button", { name: "Reset Filters" }));
     expect(cards()).toHaveLength(4);
     expect((screen.getByLabelText("Search athletes by name") as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText("Filter by sport") as HTMLSelectElement).value).toBe("all");
   });
 });
 
 describe("profile popup", () => {
   it("opens with profile, skills, achievements and records, then closes", async () => {
-    render(<MyAthletes />);
+    render(<MyAthletes athletes={connectedAthletes} />);
     await userEvent.click(screen.getByRole("button", { name: "View Juan Dela Cruz's profile" }));
     const dialog = screen.getByRole("dialog");
     for (const t of ["Athlete Profile Details", "Juan Dela Cruz", "Biography", "Evaluated Skills", "Ball Handling", "Career Achievements",
@@ -57,13 +65,13 @@ describe("profile popup", () => {
     expect(screen.queryByRole("dialog")).toBeNull();
   });
   it("closes with Escape", async () => {
-    render(<MyAthletes />);
+    render(<MyAthletes athletes={connectedAthletes} />);
     await userEvent.click(screen.getByRole("button", { name: "View Kevin Ramos's profile" }));
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).toBeNull();
   });
   it("opens the right athlete", async () => {
-    render(<MyAthletes />);
+    render(<MyAthletes athletes={connectedAthletes} />);
     await userEvent.click(screen.getByRole("button", { name: "View Alyssa Mendoza's profile" }));
     expect(within(screen.getByRole("dialog")).getByText("Track & Field • Sprinter (100m / 200m)")).toBeTruthy();
   });
@@ -79,5 +87,25 @@ describe("empty state", () => {
   it("uses the singular for one athlete", () => {
     render(<MyAthletes athletes={[connectedAthletes[0]!]} />);
     expect(screen.getByText("Total Connected: 1 Athlete")).toBeTruthy();
+  });
+});
+
+describe("loading and error states", () => {
+  it("shows a loading state instead of the empty state while fetching", () => {
+    render(<MyAthletes athletes={[]} state="loading" />);
+    expect(screen.getByRole("status", { name: "Loading athletes" })).toBeTruthy();
+    expect(screen.queryByText("No connected athletes yet")).toBeNull();
+  });
+  it("shows the error with a retry button", async () => {
+    let retried = 0;
+    render(<MyAthletes athletes={[]} state="error" error="Couldn't load." onRetry={() => { retried++; }} />);
+    expect(screen.getByRole("alert").textContent).toContain("Couldn't load.");
+    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(retried).toBe(1);
+  });
+  it("copes with an athlete who has not filled in a profile yet", () => {
+    const bare = { ...connectedAthletes[0]!, sport: "", position: "", school: "", rank: null, performance: null, consistency: null, bio: "", skills: [], achievements: [], records: [] };
+    render(<MyAthletes athletes={[bare]} />);
+    expect(screen.getByText("Rank:").nextSibling?.textContent).toBe("—");
   });
 });
